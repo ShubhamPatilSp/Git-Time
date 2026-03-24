@@ -437,7 +437,6 @@ export default function Home() {
       {/* Weekdays only */}
       <label className="flex items-center gap-3 cursor-pointer group">
         <div className={`w-10 rounded-full transition-colors relative ${weekdaysOnly ? 'bg-brand-green' : 'bg-white/10'}`} style={{ height: '22px' }}
-          style={{ height: '22px' }}
           onClick={() => setWeekdaysOnly(p => !p)}>
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${weekdaysOnly ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ margin: '1px' }} />
         </div>

@@ -45,7 +45,7 @@ export interface GenerateResult {
   endDate: string
 }
 
-async function gitExec(command: string, env?: NodeJS.ProcessEnv, cwd?: string): Promise<string> {
+async function gitExec(command: string, env?: Record<string, string>, cwd?: string): Promise<string> {
   try {
     const { stdout } = await execAsync(command, {
       cwd,
