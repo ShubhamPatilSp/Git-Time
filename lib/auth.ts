@@ -27,4 +27,13 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true, // Enables verbose logs in Render console
 };
+
+// Log presence of keys on server startup (not the values themselves)
+console.log("NextAuth Configuration status:", {
+  hasGithubId: !!process.env.GITHUB_ID,
+  hasGithubSecret: !!process.env.GITHUB_SECRET,
+  hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
+  nextAuthUrl: process.env.NEXTAUTH_URL,
+});
