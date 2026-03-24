@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
+import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
 import AdmZip from 'adm-zip'
 import { generateCommits, Author } from '@/lib/generator'
@@ -8,8 +9,8 @@ import { PatternName } from '@/lib/patterns'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-const TMP_DIR = join(process.cwd(), 'tmp')
-const OUTPUT_DIR = join(process.cwd(), 'public', 'output')
+const TMP_DIR = join(tmpdir(), 'gittime-tmp')
+const OUTPUT_DIR = join(tmpdir(), 'gittime-tmp', 'output')
 
 async function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): Promise<void> {
   const items = await fsExtra.readdir(dirPath, { withFileTypes: true })
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     }, 15 * 60 * 1000)
 
     return NextResponse.json({
-      downloadUrl: `/output/${outputFileName}`,
+      downloadUrl: `/api/download/${outputFileName}`,
       totalCommits: result.totalCommits,
       totalDays: result.totalDays,
       startDate: result.startDate,

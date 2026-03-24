@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
+import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
 import { pushToGitHub } from '@/lib/github'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-const TMP_DIR = join(process.cwd(), 'tmp')
+const TMP_DIR = join(tmpdir(), 'gittime-tmp')
 
 export async function POST(request: NextRequest) {
   try {

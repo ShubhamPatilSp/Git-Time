@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
+import { tmpdir } from 'os'
 import { v4 as uuidv4 } from 'uuid'
 import AdmZip from 'adm-zip'
 import fsExtra from 'fs-extra'
@@ -9,7 +10,7 @@ import { shouldSkipFile } from '@/lib/messages'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const TMP_DIR = join(process.cwd(), 'tmp')
+const TMP_DIR = join(tmpdir(), 'gittime-tmp')
 
 async function countFiles(dir: string): Promise<number> {
   let count = 0

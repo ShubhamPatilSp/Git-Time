@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
+import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
 
 export const runtime = 'nodejs'
 
-const OUTPUT_DIR = join(process.cwd(), 'public', 'output')
+const OUTPUT_DIR = join(tmpdir(), 'gittime-tmp', 'output')
 
 export async function GET(
   request: NextRequest,

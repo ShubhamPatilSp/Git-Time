@@ -604,12 +604,6 @@ export default function Home() {
         </div>
       )}
 
-      {stage === 'error' && (
-        <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/8">
-          <p className="font-mono text-xs text-red-400">{errorMsg}</p>
-          <button onClick={() => { setStage('idle'); setErrorMsg('') }} className="mt-2 font-mono text-xs text-white/40 hover:text-white/60 transition-colors">try again</button>
-        </div>
-      )}
     </div>
   )
 
@@ -681,6 +675,14 @@ export default function Home() {
               {/* Step content */}
               <div className="glass-card rounded-2xl p-6 min-h-[420px]">
                 {stepContent[step]?.()}
+
+                {stage === 'error' && (
+                  <div className="mt-6 p-4 rounded-xl border border-red-500/30 bg-red-500/8 animate-fadeIn">
+                    <p className="font-mono text-sm text-red-400 font-semibold mb-1">Error</p>
+                    <p className="font-mono text-xs text-red-300/80">{errorMsg}</p>
+                    <button onClick={() => { setStage('idle'); setErrorMsg('') }} className="mt-3 font-mono text-xs text-white/40 hover:text-white/60 transition-colors underline">dismiss & try again</button>
+                  </div>
+                )}
               </div>
 
               {/* Nav buttons */}
