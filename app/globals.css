@@ -63,11 +63,16 @@ body {
 @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 @keyframes commitPop { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.3)} 100%{transform:scale(1);opacity:1} }
 @keyframes spin { to { transform: rotate(360deg) } }
+@keyframes marqueeUp {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(-100%); }
+}
 
 .animate-fadeIn  { animation: fadeIn  0.35s ease-out; }
 .animate-slide-up { animation: slideUp 0.4s  ease-out; }
 .animate-spin    { animation: spin    0.8s   linear   infinite; }
-.animate-pulse-slow { animation: pulse 3s ease-in-out infinite; }
+.animate-pulse-slow { animation: blink 3s ease-in-out infinite; }
+.animate-marquee-up { animation: marqueeUp 15s linear infinite; }
 
 .commit-dot { animation: commitPop 0.25s ease-out forwards; }
 

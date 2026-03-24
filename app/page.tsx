@@ -535,9 +535,8 @@ export default function Home() {
             { id: 'frontend', label: '🎨 Frontend Heavy', map: { tsx: 50, css: 30, ts: 20 } },
           ] as { id: string; label: string; map: Record<string, number> }[]).map(p => (
             <button key={p.id} onClick={() => { setDensityPreset(p.id); setFileTypeDensity(p.map) }}
-              className={`p-2.5 rounded-xl text-left border transition-all text-xs font-mono ${
-                densityPreset === p.id ? 'border-brand-amber/40 bg-brand-amber/10 text-brand-amber' : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20'
-              }`}>{p.label}</button>
+              className={`p-2.5 rounded-xl text-left border transition-all text-xs font-mono ${densityPreset === p.id ? 'border-brand-amber/40 bg-brand-amber/10 text-brand-amber' : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20'
+                }`}>{p.label}</button>
           ))}
         </div>
         {densityPreset !== 'default' && Object.entries(fileTypeDensity).map(([ext, weight]) => (
@@ -695,13 +694,13 @@ export default function Home() {
             <span className="w-2 h-2 rounded-full bg-[#00ff87] animate-pulse shadow-[0_0_8px_#00ff87]"></span>
             <span className="font-mono text-xs text-[#00ff87] tracking-widest uppercase">Now with Gemini 2.5 AI Payload Engine</span>
           </div>
-          
+
           <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[1.1] mb-8 drop-shadow-2xl">
             The Ultimate<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] via-[#00d4ff] to-[#b026ff] animate-gradient-x">Commit History</span><br />
             Generator.
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-white/50 mb-12 max-w-3xl leading-relaxed font-light">
             Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
           </p>
@@ -719,7 +718,7 @@ export default function Home() {
         {/* Bento Box Feature Grid */}
         <section id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* AI Commits Card */}
             <div className="md:col-span-2 p-8 rounded-3xl border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl hover:border-[#00d4ff]/40 transition-colors group relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#00d4ff]/10 rounded-full blur-[80px] group-hover:bg-[#00d4ff]/20 transition-colors" />
@@ -729,7 +728,7 @@ export default function Home() {
               <h3 className="text-2xl font-bold text-white mb-3">Context-Aware AI Commits</h3>
               <p className="text-white/50 leading-relaxed mb-6">Powered by Google Gemini 2.5 Flash, the generator analyzes your actual code files to write highly specific, context-aware commit messages that look indistinguishable from senior developer logs.</p>
               <div className="font-mono text-xs p-4 rounded-xl bg-black/50 border border-white/5 text-[#00d4ff]">
-                <span className="text-white/40">&gt; gemini generate-commit --file auth.ts</span><br/>
+                <span className="text-white/40">&gt; gemini generate-commit --file auth.ts</span><br />
                 [✅] feat(auth): implement JWT token rotation and secure session cookies
               </div>
             </div>
@@ -781,27 +780,34 @@ export default function Home() {
             {/* Left: Terminal Animation */}
             <div className="rounded-3xl border border-white/10 bg-[#050508] shadow-2xl overflow-hidden relative group">
               <div className="absolute inset-0 bg-gradient-to-b from-[#00ff87]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/5">
-                <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                <span className="ml-2 font-mono text-xs text-white/30">gittime-engine ~ node generate.js</span>
+              <div className="flex items-center px-4 py-3 border-b border-white/5 bg-white/5 relative">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="font-mono text-xs text-white/30 truncate px-4">gittime-engine ~ node generate.js</span>
+                </div>
               </div>
               <div className="p-6 font-mono text-sm leading-relaxed text-[#00ff87]/70 min-h-[300px] flex flex-col justify-end overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent z-10 pointer-events-none" style={{ height: '40px', bottom: 0 }} />
-                <div className="animate-marquee-up space-y-2 pb-4">
+                {/* Top and Bottom Fade Gradients */}
+                <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-[#050508] to-transparent z-10 pointer-events-none" />
+                <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#050508] to-transparent z-10 pointer-events-none" />
+                
+                <div className="animate-marquee-up space-y-1.5 whitespace-nowrap opacity-90 pb-2">
                   <p className="text-white/40">&gt; Authenticating GitHub scopes...</p>
                   <p className="text-white/80">✓ Token verified. User: "Senior Dev"</p>
-                  <p className="text-[#00d4ff]">&gt; Gemini Batch Analyzing 4,120 lines of code...</p>
+                  <p className="text-[#00d4ff] mt-4">&gt; Gemini Batch Analyzing 4,120 lines of code...</p>
                   <p className="text-white/40">  - src/auth.ts (AST parsed)</p>
                   <p className="text-white/40">  - src/payment.tsx (AST parsed)</p>
-                  <p className="text-[#b026ff]">&gt; Injecting Fake Pull Request #42...</p>
+                  <p className="text-[#b026ff] mt-4">&gt; Injecting Fake Pull Request #42...</p>
                   <p className="text-[#00ff87]">✓ [db4f1a] feat(auth): implement JWT refresh</p>
                   <p className="text-[#00ff87]">✓ [9a2c3d] fix(ui): resolve overflow on mobile</p>
                   <p className="text-[#00ff87]">✓ [e3b21c] refactor: extract payment hook</p>
-                  <p className="text-[#b026ff]">&gt; Merge branch 'feature/payments-42' into main</p>
+                  <p className="text-[#b026ff] mt-2">&gt; Merge branch 'feature/payments-42' into main</p>
                   <p className="text-white mt-4 font-bold">✓ 385 Commits generated across 89 active days.</p>
-                  <p className="text-white font-bold animate-pulse">Pushing to origin main... ▄</p>
+                  <p className="text-white font-bold inline-flex items-center gap-2">Pushing to origin main... <span className="w-2.5 h-4 bg-[#00ff87] animate-pulse"></span></p>
                 </div>
               </div>
             </div>
@@ -811,7 +817,7 @@ export default function Home() {
               <div className="glass-card p-6 rounded-3xl border border-[#00ff87]/30 bg-[#00ff87]/5 group relative overflow-hidden">
                 <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-[#0a0a0f] to-transparent z-10" />
                 <h4 className="font-mono text-xs text-[#00ff87] tracking-widest uppercase mb-4">THE RESULT</h4>
-                
+
                 {/* Fake GitHub Graph */}
                 <div className="flex flex-col gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                   {Array.from({ length: 5 }).map((_, r) => (
@@ -823,7 +829,7 @@ export default function Home() {
                         else if (intensity > 0.6) bg = 'bg-[#26a641]';
                         else if (intensity > 0.4) bg = 'bg-[#006d32]';
                         else if (intensity > 0.2) bg = 'bg-[#0e4429]';
-                        
+
                         // Make PR merges stand out slightly purple
                         if (Math.random() > 0.95) bg = 'bg-[#b026ff] animate-pulse';
 
@@ -832,13 +838,13 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="mt-6 flex items-center justify-between font-mono text-xs text-white/50">
                   <span>Learn how we build the perfect graph</span>
                   <a href="#" className="text-[#00ff87] hover:underline">Read the Docs →</a>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-mono text-xs font-bold shrink-0">1</div>
@@ -856,7 +862,7 @@ export default function Home() {
             </div>
           </div>
         </section>
-        
+
         {/* Footer */}
         <footer className="w-full relative z-20 border-t border-white/5 py-8 text-center bg-[#050508]/80 backdrop-blur-lg">
           <p className="font-mono text-sm text-white/30">GitTime Pro &copy; {new Date().getFullYear()}. Built with Next.js & Gemini AI.</p>
