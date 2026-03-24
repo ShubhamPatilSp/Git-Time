@@ -664,43 +664,203 @@ export default function Home() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Animated Orbs */}
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[10%] left-[20%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-20" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }} />
-          <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-10" style={{ background: '#00d4ff' }} />
+      <div className="relative min-h-screen bg-[#050508] flex flex-col items-center justify-between overflow-x-hidden selection:bg-brand-green/30 selection:text-brand-green">
+        {/* Animated Background Gradients */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] rounded-full blur-[150px] opacity-20" style={{ background: 'radial-gradient(circle, #00ff87 0%, transparent 60%)' }} />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-15" style={{ background: 'radial-gradient(circle, #00d4ff 0%, transparent 60%)' }} />
+          <div className="absolute top-[30%] right-[20%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-10" style={{ background: 'radial-gradient(circle, #b026ff 0%, transparent 60%)' }} />
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         </div>
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 text-center">
-          <p className="font-mono text-sm text-brand-green/80 uppercase tracking-[0.3em] mb-6 glow-text-green">$ git commit --history --legendary</p>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight mb-8">
-            Undetectable <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>Commit History</span><br />Generator
+        {/* Top Navbar */}
+        <nav className="w-full relative z-20 flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,255,135,0.3)]" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#050508" /><circle cx="12" cy="4" r="2" fill="#050508" /><circle cx="8" cy="12" r="2" fill="#050508" /><line x1="4" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /><line x1="12" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /></svg>
+            </div>
+            <span className="font-mono text-xl font-black tracking-widest text-white drop-shadow-md">GITTIME</span>
+            <span className="ml-2 font-mono text-xs font-bold px-2 py-0.5 rounded-full border border-[#00ff87]/30 text-[#00ff87] bg-[#00ff87]/10 backdrop-blur-sm shadow-[0_0_10px_rgba(0,255,135,0.2)]">PRO v2.0</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 font-mono text-sm text-white/50">
+            <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors">How it Works</a>
+            <button onClick={() => signIn('github')} className="px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 text-white transition-all transform hover:-translate-y-0.5">Sign In</button>
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/5 bg-white/5 backdrop-blur-md mb-8 shadow-2xl">
+            <span className="w-2 h-2 rounded-full bg-[#00ff87] animate-pulse shadow-[0_0_8px_#00ff87]"></span>
+            <span className="font-mono text-xs text-[#00ff87] tracking-widest uppercase">Now with Gemini 2.5 AI Payload Engine</span>
+          </div>
+          
+          <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[1.1] mb-8 drop-shadow-2xl">
+            The Ultimate<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] via-[#00d4ff] to-[#b026ff] animate-gradient-x">Commit History</span><br />
+            Generator.
           </h1>
-          <p className="text-lg md:text-xl text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Turn empty projects into bustling, battle-tested repositories. Backdate realistic commit workflows directly into your GitHub account with a single click.
+          
+          <p className="text-xl md:text-2xl text-white/50 mb-12 max-w-3xl leading-relaxed font-light">
+            Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
           </p>
 
-          <button onClick={() => signIn('github')} className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-mono text-sm font-bold text-black transition-all hover:scale-105 active:scale-95" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
-            <div className="absolute inset-0 rounded-2xl opacity-50 group-hover:opacity-100 blur transition-opacity" style={{ background: 'inherit' }} />
-            <svg className="relative z-10 w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <button onClick={() => signIn('github')} className="group relative inline-flex items-center justify-center gap-4 px-10 py-5 rounded-2xl font-mono text-lg font-bold text-[#050508] transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(0,255,135,0.3)] hover:shadow-[0_0_60px_rgba(0,255,135,0.5)] bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">
+            <div className="absolute inset-0 rounded-2xl opacity-50 group-hover:opacity-100 blur-md transition-opacity bg-inherit" />
+            <svg className="relative z-10 w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
             </svg>
             <span className="relative z-10">Sign in with GitHub to start →</span>
           </button>
-        </div>
+          <p className="mt-4 font-mono text-xs text-white/30 uppercase tracking-widest">No credit card required. Free forever.</p>
+        </main>
 
-        <div className="relative z-10 mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto px-6">
-          {[
-            { title: "Completely Undetectable", desc: "Randomized committer dates, varied file lengths, and advanced GitHub patterns." },
-            { title: "One-Click Push", desc: "No more downloading zips or typing terminal commands. We push directly via OAuth." },
-            { title: "AI-Ready Flexibility", desc: "Generate 50 to 5,000 commits matching realistic, backdated developer activity." }
-          ].map((feature, idx) => (
-            <div key={idx} className="p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
-              <h3 className="font-mono text-sm text-brand-green mb-2 glow-text-green">{feature.title}</h3>
-              <p className="text-white/40 text-sm leading-relaxed">{feature.desc}</p>
+        {/* Bento Box Feature Grid */}
+        <section id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* AI Commits Card */}
+            <div className="md:col-span-2 p-8 rounded-3xl border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl hover:border-[#00d4ff]/40 transition-colors group relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#00d4ff]/10 rounded-full blur-[80px] group-hover:bg-[#00d4ff]/20 transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center mb-6">
+                <span className="text-2xl">🧠</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Context-Aware AI Commits</h3>
+              <p className="text-white/50 leading-relaxed mb-6">Powered by Google Gemini 2.5 Flash, the generator analyzes your actual code files to write highly specific, context-aware commit messages that look indistinguishable from senior developer logs.</p>
+              <div className="font-mono text-xs p-4 rounded-xl bg-black/50 border border-white/5 text-[#00d4ff]">
+                <span className="text-white/40">&gt; gemini generate-commit --file auth.ts</span><br/>
+                [✅] feat(auth): implement JWT token rotation and secure session cookies
+              </div>
             </div>
-          ))}
-        </div>
+
+            {/* PR Branches Card */}
+            <div className="p-8 rounded-3xl border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl hover:border-[#b026ff]/40 transition-colors group relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#b026ff]/10 rounded-full blur-[80px] group-hover:bg-[#b026ff]/20 transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-[#b026ff]/10 border border-[#b026ff]/30 flex items-center justify-center mb-6">
+                <span className="text-2xl">🔀</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Fake Pull Requests</h3>
+              <p className="text-white/50 leading-relaxed">It doesn't just push a straight line to main. GitTime automatically branches out, commits, and simulates PR merges.</p>
+            </div>
+
+            {/* File Density Card */}
+            <div className="p-8 rounded-3xl border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl hover:border-[#00ff87]/40 transition-colors group relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00ff87]/10 rounded-full blur-[80px] group-hover:bg-[#00ff87]/20 transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-[#00ff87]/10 border border-[#00ff87]/30 flex items-center justify-center mb-6">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Commit Density Targeting</h3>
+              <p className="text-white/50 leading-relaxed">Want to look like a Frontend God? Dial up the `.tsx` and `.css` density. The engine weights the random selection pool based on your settings.</p>
+            </div>
+
+            {/* Direct Push Card */}
+            <div className="md:col-span-2 p-8 rounded-3xl border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl hover:border-white/30 transition-colors group relative overflow-hidden flex flex-col justify-center">
+              <div className="flex items-center gap-6">
+                <div className="flex-shrink-0 w-20 h-20 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Automated Server-Side Push</h3>
+                  <p className="text-white/50 leading-relaxed">Forget downloading ZIP files. Authorize via OAuth and GitTime builds the `.git` directory in memory and pushes directly to a new repository on your profile.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32 pt-20 border-t border-white/5">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">See It In Action</h2>
+            <p className="text-xl text-white/50 max-w-2xl mx-auto">From an empty codebase to a breathtaking commit history graph in seconds.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Terminal Animation */}
+            <div className="rounded-3xl border border-white/10 bg-[#050508] shadow-2xl overflow-hidden relative group">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#00ff87]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/5">
+                <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                <span className="ml-2 font-mono text-xs text-white/30">gittime-engine ~ node generate.js</span>
+              </div>
+              <div className="p-6 font-mono text-sm leading-relaxed text-[#00ff87]/70 min-h-[300px] flex flex-col justify-end overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent z-10 pointer-events-none" style={{ height: '40px', bottom: 0 }} />
+                <div className="animate-marquee-up space-y-2 pb-4">
+                  <p className="text-white/40">&gt; Authenticating GitHub scopes...</p>
+                  <p className="text-white/80">✓ Token verified. User: "Senior Dev"</p>
+                  <p className="text-[#00d4ff]">&gt; Gemini Batch Analyzing 4,120 lines of code...</p>
+                  <p className="text-white/40">  - src/auth.ts (AST parsed)</p>
+                  <p className="text-white/40">  - src/payment.tsx (AST parsed)</p>
+                  <p className="text-[#b026ff]">&gt; Injecting Fake Pull Request #42...</p>
+                  <p className="text-[#00ff87]">✓ [db4f1a] feat(auth): implement JWT refresh</p>
+                  <p className="text-[#00ff87]">✓ [9a2c3d] fix(ui): resolve overflow on mobile</p>
+                  <p className="text-[#00ff87]">✓ [e3b21c] refactor: extract payment hook</p>
+                  <p className="text-[#b026ff]">&gt; Merge branch 'feature/payments-42' into main</p>
+                  <p className="text-white mt-4 font-bold">✓ 385 Commits generated across 89 active days.</p>
+                  <p className="text-white font-bold animate-pulse">Pushing to origin main... ▄</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: The Final Graph */}
+            <div className="space-y-8">
+              <div className="glass-card p-6 rounded-3xl border border-[#00ff87]/30 bg-[#00ff87]/5 group relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-[#0a0a0f] to-transparent z-10" />
+                <h4 className="font-mono text-xs text-[#00ff87] tracking-widest uppercase mb-4">THE RESULT</h4>
+                
+                {/* Fake GitHub Graph */}
+                <div className="flex flex-col gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                  {Array.from({ length: 5 }).map((_, r) => (
+                    <div key={r} className="flex gap-1.5">
+                      {Array.from({ length: 24 }).map((_, c) => {
+                        const intensity = Math.random();
+                        let bg = 'bg-white/5';
+                        if (intensity > 0.8) bg = 'bg-[#39d353]';
+                        else if (intensity > 0.6) bg = 'bg-[#26a641]';
+                        else if (intensity > 0.4) bg = 'bg-[#006d32]';
+                        else if (intensity > 0.2) bg = 'bg-[#0e4429]';
+                        
+                        // Make PR merges stand out slightly purple
+                        if (Math.random() > 0.95) bg = 'bg-[#b026ff] animate-pulse';
+
+                        return <div key={c} className={`w-3.5 h-3.5 rounded-[2px] ${bg} transition-colors duration-500`} />
+                      })}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-6 flex items-center justify-between font-mono text-xs text-white/50">
+                  <span>Learn how we build the perfect graph</span>
+                  <a href="#" className="text-[#00ff87] hover:underline">Read the Docs →</a>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-mono text-xs font-bold shrink-0">1</div>
+                  <p className="text-sm text-white/60 leading-relaxed">Upload your clean, finished project ZIP. We extract all files securely in-memory.</p>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-mono text-xs font-bold shrink-0 text-[#00d4ff]">2</div>
+                  <p className="text-sm text-white/60 leading-relaxed">Customize your developer profile. Choose from "Weekend Warrior" to "Crunch Mode". Setup dense folder targeting.</p>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-mono text-xs font-bold shrink-0 text-[#00ff87]">3</div>
+                  <p className="text-sm text-white/60 leading-relaxed">Click Generate. We rewrite history, inject feature branches, apply AI payloads to match your code, and push instantly.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        {/* Footer */}
+        <footer className="w-full relative z-20 border-t border-white/5 py-8 text-center bg-[#050508]/80 backdrop-blur-lg">
+          <p className="font-mono text-sm text-white/30">GitTime Pro &copy; {new Date().getFullYear()}. Built with Next.js & Gemini AI.</p>
+        </footer>
       </div>
     )
   }
