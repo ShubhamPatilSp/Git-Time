@@ -105,6 +105,8 @@ export default function Home() {
   const [isPrivateRepo, setIsPrivateRepo] = useState(false)
   const [pushResult, setPushResult] = useState<{ repoUrl: string } | null>(null)
   const [useAI, setUseAI] = useState(false)
+  const [fileTypeDensity, setFileTypeDensity] = useState<Record<string, number>>({})
+  const [densityPreset, setDensityPreset] = useState<string>('default')
 
   const { data: session, status } = useSession()
 
@@ -193,6 +195,7 @@ export default function Home() {
           addMergeCommits,
           excludeFolders: excludeFolders.split(',').map(s => s.trim()).filter(Boolean),
           useAI,
+          fileTypeDensity: Object.keys(fileTypeDensity).length > 0 ? fileTypeDensity : undefined,
         }),
       })
 
@@ -504,6 +507,33 @@ export default function Home() {
           <p className="font-mono text-xs text-white/40">Highly realistic commit messages based on live code</p>
         </div>
       </label>
+
+      {/* File-Type Density */}
+      <div className="mt-2 pt-4 border-t border-white/5">
+        <label className="block font-mono text-xs text-white/40 uppercase tracking-widest mb-3">Commit Target Density</label>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {([
+            { id: 'default', label: '⚖️ Balanced', map: {} as Record<string, number> },
+            { id: 'fullstack', label: '🖥️ Full-Stack', map: { ts: 50, tsx: 30, css: 10, json: 10 } },
+            { id: 'backend', label: '⚙️ Backend Heavy', map: { ts: 60, js: 20, json: 15, md: 5 } },
+            { id: 'frontend', label: '🎨 Frontend Heavy', map: { tsx: 50, css: 30, ts: 20 } },
+          ] as { id: string; label: string; map: Record<string, number> }[]).map(p => (
+            <button key={p.id} onClick={() => { setDensityPreset(p.id); setFileTypeDensity(p.map) }}
+              className={`p-2.5 rounded-xl text-left border transition-all text-xs font-mono ${
+                densityPreset === p.id ? 'border-brand-amber/40 bg-brand-amber/10 text-brand-amber' : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20'
+              }`}>{p.label}</button>
+          ))}
+        </div>
+        {densityPreset !== 'default' && Object.entries(fileTypeDensity).map(([ext, weight]) => (
+          <div key={ext} className="flex items-center gap-3 mb-2">
+            <span className="font-mono text-xs text-white/50 w-10">.{ext}</span>
+            <input type="range" min={5} max={90} value={weight}
+              onChange={e => setFileTypeDensity(prev => ({ ...prev, [ext]: Number(e.target.value) }))}
+              className="flex-1 accent-amber-400 h-1.5 rounded-full" />
+            <span className="font-mono text-xs text-brand-amber w-8 text-right">{weight}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 

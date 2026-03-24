@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       addMergeCommits = false,
       excludeFolders = [],
       useAI = false,
+      fileTypeDensity,
     } = body
 
     if (!sessionId) return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       addMergeCommits: Boolean(addMergeCommits),
       excludeFolders: Array.isArray(excludeFolders) ? excludeFolders : [],
       useAI: Boolean(useAI),
+      fileTypeDensity: fileTypeDensity && typeof fileTypeDensity === 'object' ? fileTypeDensity : undefined,
     })
 
     // Package the repo

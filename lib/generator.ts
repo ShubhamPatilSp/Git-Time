@@ -28,6 +28,7 @@ export interface GenerateOptions {
   addMergeCommits: boolean
   excludeFolders: string[]
   useAI?: boolean
+  fileTypeDensity?: Record<string, number> // e.g. { ts: 70, js: 20, css: 10 }
   onProgress?: (current: number, total: number, message: string, file: string) => void
 }
 
@@ -176,6 +177,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     addMergeCommits,
     excludeFolders,
     useAI,
+    fileTypeDensity,
     onProgress,
   } = options
 
@@ -188,6 +190,31 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
   )
   const allFiles = sortedRel.map(rel => join(extractPath, rel))
   const totalFiles = allFiles.length
+
+  // Build weighted file pool based on fileTypeDensity
+  let weightedPool: string[] = allFiles
+  if (fileTypeDensity && Object.keys(fileTypeDensity).length > 0) {
+    const totalWeight = Object.values(fileTypeDensity).reduce((a, b) => a + b, 0)
+    if (totalWeight > 0) {
+      const boostedPool: string[] = []
+      const otherFiles = allFiles.filter(f => {
+        const ext = f.split('.').pop()?.toLowerCase() || ''
+        return !Object.keys(fileTypeDensity).includes(ext)
+      })
+      for (const [ext, weight] of Object.entries(fileTypeDensity)) {
+        const matchingFiles = allFiles.filter(f => f.endsWith(`.${ext}`))
+        if (matchingFiles.length > 0) {
+          const multiplier = Math.max(1, Math.round((weight / totalWeight) * 10))
+          for (let i = 0; i < multiplier; i++) {
+            boostedPool.push(...matchingFiles)
+          }
+        }
+      }
+      // Always include remaining files once
+      boostedPool.push(...otherFiles)
+      weightedPool = boostedPool.length > 0 ? boostedPool : allFiles
+    }
+  }
 
   // How many commits to create — can be more or fewer than file count
   const desiredCommits = (requestedCommits && requestedCommits > 0)
@@ -238,9 +265,10 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     // Pre-calculate files for today for AI batching
     const filesToCommitToday = []
     let tempCommitsDone = commitsDone
+    const poolSize = weightedPool.length
     for (let c = 0; c < commitsToday && tempCommitsDone < desiredCommits; c++) {
-      const currentFileIdx = tempCommitsDone % totalFiles
-      const filePath = allFiles[currentFileIdx]
+      const currentFileIdx = tempCommitsDone % poolSize
+      const filePath = weightedPool[currentFileIdx]
       const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
       filesToCommitToday.push({ absolutePath: filePath, filePath: relPath })
       tempCommitsDone++
@@ -257,9 +285,9 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     }
 
     for (let c = 0; c < commitsToday && commitsDone < desiredCommits; c++) {
-      // Cycle through files if desiredCommits > totalFiles
-      const currentFileIdx = commitsDone % totalFiles
-      const filePath = allFiles[currentFileIdx]
+      // Cycle through weighted pool
+      const currentFileIdx = commitsDone % poolSize
+      const filePath = weightedPool[currentFileIdx]
       const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
       const ts = timestamps[Math.min(c, timestamps.length - 1)]
       const author = pickAuthor(authors, rng)
