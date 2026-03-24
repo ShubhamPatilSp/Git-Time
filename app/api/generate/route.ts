@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       addMergeCommits = false,
       excludeFolders = [],
       useAI = false,
+      injectPRMerges = false,
       fileTypeDensity,
     } = body
 

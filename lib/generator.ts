@@ -28,7 +28,8 @@ export interface GenerateOptions {
   addMergeCommits: boolean
   excludeFolders: string[]
   useAI?: boolean
-  fileTypeDensity?: Record<string, number> // e.g. { ts: 70, js: 20, css: 10 }
+  fileTypeDensity?: Record<string, number>
+  injectPRMerges?: boolean
   onProgress?: (current: number, total: number, message: string, file: string) => void
 }
 
@@ -124,6 +125,91 @@ async function initGitRepo(repoPath: string, author: Author, branchName: string)
   await gitExec(`git symbolic-ref HEAD refs/heads/${safeBranch}`, {}, repoPath)
 }
 
+// --- Feature Branch Pool ---
+const FEATURE_NAMES = [
+  'user-auth', 'dashboard-ui', 'api-refactor', 'fix-login-bug', 'perf-improvements',
+  'add-search', 'payment-flow', 'notification-system', 'dark-mode', 'settings-page',
+  'mobile-responsive', 'data-export', 'onboarding-flow', 'error-handling', 'cache-layer',
+  'ci-pipeline', 'rate-limiting', 'oauth-integration', 'file-upload', 'email-service',
+]
+
+async function spawnFeatureBranch(
+  repoPath: string,
+  mainBranch: string,
+  prNumber: number,
+  filePaths: string[],
+  messages: string[],
+  baseDate: Date,
+  author: Author,
+  rng: () => number
+): Promise<void> {
+  const nameIdx = Math.floor(rng() * FEATURE_NAMES.length)
+  const branchName = `feature/${FEATURE_NAMES[nameIdx]}-${prNumber}`
+
+  try {
+    // Create and switch to feature branch
+    await gitExec(`git checkout -b ${branchName}`, {}, repoPath)
+
+    const nameEsc = author.name.replace(/"/g, "'")
+    const emailEsc = author.email.replace(/"/g, "'")
+
+    // Add commits to the feature branch
+    for (let i = 0; i < filePaths.length; i++) {
+      const filePath = filePaths[i]
+      const message = messages[i] || `update ${filePath}`
+      const d = new Date(baseDate.getTime() + i * 3600000)
+      const safeMsg = message.replace(/\\/g, '').replace(/"/g, "'").replace(/`/g, '').replace(/\$/g, '').trim() || 'update file'
+      const relPath = relative(repoPath, filePath).split('\\').join('/')
+
+      try {
+        await gitExec(`git add -- "${relPath}"`, {}, repoPath)
+        const staged = await gitExec('git diff --cached --name-only', {}, repoPath)
+        if (!staged?.trim()) continue
+
+        await gitExec(
+          `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -m "${safeMsg}"`,
+          {
+            GIT_AUTHOR_DATE: d.toISOString(),
+            GIT_COMMITTER_DATE: d.toISOString(),
+            GIT_AUTHOR_NAME: author.name,
+            GIT_AUTHOR_EMAIL: author.email,
+            GIT_COMMITTER_NAME: author.name,
+            GIT_COMMITTER_EMAIL: author.email,
+          },
+          repoPath
+        )
+      } catch { /* individual commit errors are non-fatal */ }
+    }
+
+    // Switch back to main and merge with --no-ff for a real PR graph
+    await gitExec(`git checkout ${mainBranch}`, {}, repoPath)
+    const mergeDate = new Date(baseDate.getTime() + filePaths.length * 3600000 + 600000)
+    const prMsg = `Merge pull request #${prNumber} from ${branchName}`
+
+    try {
+      await gitExec(
+        `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" merge --no-ff ${branchName} -m "${prMsg}"`,
+        {
+          GIT_AUTHOR_DATE: mergeDate.toISOString(),
+          GIT_COMMITTER_DATE: mergeDate.toISOString(),
+          GIT_AUTHOR_NAME: author.name,
+          GIT_AUTHOR_EMAIL: author.email,
+          GIT_COMMITTER_NAME: author.name,
+          GIT_COMMITTER_EMAIL: author.email,
+        },
+        repoPath
+      )
+    } catch { /* merge may fail if nothing changed */ }
+
+    // Cleanup: delete the feature branch
+    try { await gitExec(`git branch -d ${branchName}`, {}, repoPath) } catch { /* ok */ }
+
+  } catch (err) {
+    // If anything goes wrong, make sure we're back on main
+    try { await gitExec(`git checkout ${mainBranch}`, {}, repoPath) } catch { /* ok */ }
+  }
+}
+
 async function stageAndCommit(
   repoPath: string,
   filePath: string,
@@ -178,6 +264,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     excludeFolders,
     useAI,
     fileTypeDensity,
+    injectPRMerges,
     onProgress,
   } = options
 
@@ -247,6 +334,8 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
 
   let commitsDone = 0
   let sinceLastMerge = 0
+  let sinceLastPR = 0
+  let prNumber = Math.floor(rng() * 5) + 1 // Start PR counter at a random low number
 
   // Main commit loop — iterate over scheduled days
   for (const daySlot of daySchedule) {
@@ -325,11 +414,29 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
         })
         onProgress?.(commitsDone + 1, desiredCommits, message, relPath)
         sinceLastMerge++
+        sinceLastPR++
       }
 
       commitsDone++
 
-      // Inject merge commit every 5-9 commits
+      // Inject real PR feature branch every 20-30 commits
+      const prThreshold = Math.floor(rng() * 11) + 20
+      if (injectPRMerges && sinceLastPR >= prThreshold && commitsDone < desiredCommits - 12) {
+        const branchCommitCount = Math.floor(rng() * 6) + 5 // 5-10 commits
+        const branchFiles: string[] = []
+        const branchMessages: string[] = []
+        for (let bi = 0; bi < branchCommitCount; bi++) {
+          const bIdx = (commitsDone + bi) % poolSize
+          branchFiles.push(weightedPool[bIdx])
+          const bRelPath = relative(extractPath, weightedPool[bIdx]).replace(/\\/g, '/')
+          branchMessages.push(generateMessage({ filePath: bRelPath, index: commitsDone + bi, total: desiredCommits, previousMessages, authorStyle }))
+        }
+        prNumber++
+        await spawnFeatureBranch(extractPath, safeBranch, prNumber, branchFiles, branchMessages, ts.authorDate, author, rng)
+        sinceLastPR = 0
+      }
+
+      // Inject simple merge commit every 5-9 commits
       if (
         addMergeCommits &&
         sinceLastMerge >= Math.floor(rng() * 5) + 5 &&

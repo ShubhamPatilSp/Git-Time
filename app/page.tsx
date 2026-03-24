@@ -105,6 +105,7 @@ export default function Home() {
   const [isPrivateRepo, setIsPrivateRepo] = useState(false)
   const [pushResult, setPushResult] = useState<{ repoUrl: string } | null>(null)
   const [useAI, setUseAI] = useState(false)
+  const [injectPRMerges, setInjectPRMerges] = useState(false)
   const [fileTypeDensity, setFileTypeDensity] = useState<Record<string, number>>({})
   const [densityPreset, setDensityPreset] = useState<string>('default')
 
@@ -193,6 +194,7 @@ export default function Home() {
           weekdaysOnly,
           authorStyle,
           addMergeCommits,
+          injectPRMerges,
           excludeFolders: excludeFolders.split(',').map(s => s.trim()).filter(Boolean),
           useAI,
           fileTypeDensity: Object.keys(fileTypeDensity).length > 0 ? fileTypeDensity : undefined,
@@ -489,8 +491,22 @@ export default function Home() {
             style={{ margin: '3px', transform: addMergeCommits ? 'translateX(18px)' : 'translateX(0)' }} />
         </div>
         <div>
-          <p className="font-mono text-sm text-white/70">Inject merge commits</p>
-          <p className="font-mono text-xs text-white/25">Adds realistic merge commits every 5–9 commits</p>
+          <p className="font-mono text-sm text-white/70">Inject standard merge commits</p>
+          <p className="font-mono text-xs text-white/25">Adds general merge commits every 5–9 commits</p>
+        </div>
+      </label>
+
+      {/* PR / Feature Branch toggle */}
+      <label className="flex items-center gap-3 cursor-pointer mt-1">
+        <div className={`relative rounded-full transition-colors shadow ${injectPRMerges ? 'shadow-brand-purple/50' : ''}`}
+          style={{ width: '40px', height: '22px', background: injectPRMerges ? '#b026ff' : 'rgba(255,255,255,0.1)' }}
+          onClick={() => setInjectPRMerges(p => !p)}>
+          <div className={`absolute top-0 w-4 h-4 rounded-full bg-white shadow transition-transform`}
+            style={{ margin: '3px', transform: injectPRMerges ? 'translateX(18px)' : 'translateX(0)' }} />
+        </div>
+        <div>
+          <p className={`font-mono text-sm font-semibold transition-colors ${injectPRMerges ? 'text-brand-purple' : 'text-white/70'}`}>Fake PRs & Feature Branches</p>
+          <p className="font-mono text-xs text-white/40">Actually creates branches + PR merge commits (looks very real)</p>
         </div>
       </label>
 
