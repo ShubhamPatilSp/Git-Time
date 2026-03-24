@@ -9,22 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "adm-zip": "^0.5.14",
+    "date-fns": "^3.6.0",
+    "fs-extra": "^11.2.0",
     "next": "14.2.5",
+    "next-auth": "^4.24.13",
     "react": "^18",
     "react-dom": "^18",
-    "adm-zip": "^0.5.14",
     "simple-git": "^3.27.0",
-    "fs-extra": "^11.2.0",
-    "uuid": "^10.0.0",
-    "date-fns": "^3.6.0",
-    "@octokit/rest": "^21.0.2"
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/fs-extra": "^11.0.4",
-    "@types/adm-zip": "^0.5.5",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.0.1",
     "postcss": "^8",

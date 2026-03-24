@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import AuthProvider from './components/SessionProvider'
 
 export const metadata: Metadata = {
   title: 'GitTime — Commit Timeline Generator',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="noise-bg grid-bg antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

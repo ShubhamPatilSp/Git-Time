@@ -54,6 +54,22 @@ export async function POST(request: NextRequest) {
     zip.extractAllTo(extractPath, true)
     await fsExtra.remove(zipPath)
 
+    // Hoist nested directory if the user zipped the parent folder instead of its contents
+    let rootItems = await fsExtra.readdir(extractPath)
+    rootItems = rootItems.filter(i => !i.startsWith('__MACOSX') && i !== '.DS_Store' && i !== '.git')
+
+    if (rootItems.length === 1) {
+      const singleItemPath = join(extractPath, rootItems[0])
+      const stat = await fsExtra.stat(singleItemPath)
+      if (stat.isDirectory()) {
+        const nestedItems = await fsExtra.readdir(singleItemPath)
+        for (const nestedItem of nestedItems) {
+          await fsExtra.move(join(singleItemPath, nestedItem), join(extractPath, nestedItem))
+        }
+        await fsExtra.remove(singleItemPath)
+      }
+    }
+
     const fileCount = await countFiles(extractPath)
 
     return NextResponse.json({ sessionId, fileCount, message: 'Upload successful' })

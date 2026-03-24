@@ -3,6 +3,8 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
 import { pushToGitHub } from '@/lib/github'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../auth/[...nextauth]/route'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,10 +13,18 @@ const TMP_DIR = join(tmpdir(), 'gittime-tmp')
 
 export async function POST(request: NextRequest) {
   try {
-    const { sessionId, token, repoName, isPrivate, branchName, description } = await request.json()
+    const { sessionId, repoName, isPrivate, branchName, description } = await request.json()
 
-    if (!sessionId || !token || !repoName) {
+    const session = await getServerSession(authOptions)
+    // @ts-ignore
+    const token = session?.accessToken
+
+    if (!sessionId || !repoName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in with GitHub.' }, { status: 401 })
     }
 
     const extractPath = join(TMP_DIR, sessionId, 'extracted')

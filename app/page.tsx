@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useSession, signIn, signOut } from "next-auth/react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type WizardStep = 1 | 2 | 3 | 4 | 5
@@ -34,17 +35,17 @@ interface GenerateResult {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PATTERNS = [
   { id: 'active-sprint', label: 'Active Sprint', emoji: '🚀', desc: 'Heavy weekday activity, focused sprints' },
-  { id: 'side-project',  label: 'Side Project',  emoji: '🌙', desc: 'Sporadic bursts, evenings & weekends' },
-  { id: 'daily-grind',   label: 'Daily Grind',   emoji: '⚙️', desc: 'Consistent commits every day' },
+  { id: 'side-project', label: 'Side Project', emoji: '🌙', desc: 'Sporadic bursts, evenings & weekends' },
+  { id: 'daily-grind', label: 'Daily Grind', emoji: '⚙️', desc: 'Consistent commits every day' },
   { id: 'weekend-warrior', label: 'Weekend Warrior', emoji: '🏄', desc: 'Most work on weekends' },
-  { id: 'crunch-mode',   label: 'Crunch Mode',   emoji: '🔥', desc: 'Deadline-driven, late nights' },
-  { id: 'casual',        label: 'Casual',         emoji: '☕', desc: 'Relaxed, occasional commits' },
+  { id: 'crunch-mode', label: 'Crunch Mode', emoji: '🔥', desc: 'Deadline-driven, late nights' },
+  { id: 'casual', label: 'Casual', emoji: '☕', desc: 'Relaxed, occasional commits' },
 ]
 
 const AUTHOR_STYLES = [
   { id: 'descriptive', label: 'Descriptive', example: 'implement user authentication service' },
-  { id: 'terse',       label: 'Terse',       example: 'auth service' },
-  { id: 'conventional',label: 'Conventional',example: 'feat(auth): add user authentication' },
+  { id: 'terse', label: 'Terse', example: 'auth service' },
+  { id: 'conventional', label: 'Conventional', example: 'feat(auth): add user authentication' },
 ]
 
 const STEPS = [
@@ -104,17 +105,19 @@ export default function Home() {
   const [isPrivateRepo, setIsPrivateRepo] = useState(false)
   const [pushResult, setPushResult] = useState<{ repoUrl: string } | null>(null)
 
+  const { data: session, status } = useSession()
+
   // Auto-fill author email from GitHub if available
   useEffect(() => {
-    if (githubUser && authors[0].name === '' && authors[0].email === '') {
+    if (session?.user && authors[0].name === '' && authors[0].email === '') {
       setAuthors(prev => prev.map((a, i) => i === 0 ? {
         ...a,
-        name: githubUser.username,
-        email: githubUser.email || `${githubUser.username}@users.noreply.github.com`,
+        name: session.user.name || session.user.email?.split('@')[0] || 'Developer',
+        email: session.user.email || 'dev@example.com',
       } : a))
       setRepoName('my-project')
     }
-  }, [githubUser])
+  }, [session])
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
   const validateToken = async () => {
@@ -210,7 +213,7 @@ export default function Home() {
   }
 
   const handlePushToGithub = async () => {
-    if (!sessionId || !githubToken || !repoName) return
+    if (!sessionId || !repoName) return
     setPushingToGithub(true)
     try {
       const res = await fetch('/api/github/push', {
@@ -249,9 +252,20 @@ export default function Home() {
   const renderStep1 = () => (
     <div className="space-y-6 animate-fadeIn">
       <div>
-        <h2 className="text-lg font-semibold text-white mb-1">Who's committing?</h2>
-        <p className="text-sm text-white/40">Your name and email must match your GitHub account for contributions to count.</p>
+        <h2 className="text-lg font-semibold text-white mb-1">Authenticated Account</h2>
+        <p className="text-sm text-white/40">You are securely signed in via GitHub. Contributions will be mapped securely.</p>
       </div>
+
+      {session?.user && (
+        <div className="flex items-center gap-4 p-4 rounded-xl border border-brand-green/30 bg-brand-green/5">
+          {session.user.image && <img src={session.user.image} alt="avatar" className="w-12 h-12 rounded-full border border-brand-green/50" />}
+          <div>
+            <p className="font-mono text-sm font-semibold text-brand-green">{session.user.name || 'Developer'}</p>
+            <p className="font-mono text-xs text-white/50">{session.user.email}</p>
+          </div>
+          <button onClick={() => signOut()} className="ml-auto px-3 py-1.5 rounded-lg border border-white/10 text-xs font-mono text-white/40 hover:bg-white/10 transition-colors">Sign Out</button>
+        </div>
+      )}
 
       {/* Primary author */}
       <div className="space-y-3">
@@ -259,7 +273,7 @@ export default function Home() {
           <div key={i} className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-xs text-white/40 uppercase tracking-widest">
-                {i === 0 ? 'Primary Author' : `Co-author ${i}`}
+                {i === 0 ? 'Primary Identity' : `Co-author ${i}`}
               </span>
               {i > 0 && (
                 <button onClick={() => setAuthors(prev => prev.filter((_, idx) => idx !== i))}
@@ -268,20 +282,22 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-mono text-xs text-white/30 mb-1.5">Name</label>
-                <input type="text" value={author.name} placeholder="Shubham Patil"
-                  onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, name: e.target.value } : a))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
+            {i > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-mono text-xs text-white/30 mb-1.5">Name</label>
+                  <input type="text" value={author.name} placeholder="Shubham Patil"
+                    onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, name: e.target.value } : a))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
+                </div>
+                <div>
+                  <label className="block font-mono text-xs text-white/30 mb-1.5">Email</label>
+                  <input type="email" value={author.email} placeholder="you@gmail.com"
+                    onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, email: e.target.value } : a))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
+                </div>
               </div>
-              <div>
-                <label className="block font-mono text-xs text-white/30 mb-1.5">Email</label>
-                <input type="email" value={author.email} placeholder="you@gmail.com"
-                  onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, email: e.target.value } : a))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
-              </div>
-            </div>
+            )}
             {authors.length > 1 && (
               <div>
                 <label className="block font-mono text-xs text-white/30 mb-1.5">Commit share: {author.weight}%</label>
@@ -292,42 +308,12 @@ export default function Home() {
             )}
           </div>
         ))}
-
         {authors.length < 3 && (
           <button onClick={() => setAuthors(prev => [...prev, { name: '', email: '', weight: 30 }])}
             className="w-full py-2.5 rounded-xl border border-dashed border-white/20 font-mono text-xs text-white/30 hover:text-white/50 hover:border-white/25 transition-all">
             + add co-author
           </button>
         )}
-      </div>
-
-      {/* GitHub Token */}
-      <div className="p-4 rounded-xl border border-white/10 bg-white/5">
-        <div className="flex items-center gap-2 mb-3">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="text-white/50">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-          </svg>
-          <span className="font-mono text-xs text-white/50 uppercase tracking-widest">GitHub Token (optional)</span>
-        </div>
-        <p className="font-mono text-xs text-white/25 mb-3">
-          Required only for "Push to GitHub" feature. Generate at GitHub → Settings → Developer Settings → PAT → repo scope.
-        </p>
-        <div className="flex gap-2">
-          <input type="password" value={githubToken} placeholder="ghp_xxxxxxxxxxxx"
-            onChange={e => { setGithubToken(e.target.value); setGithubUser(null); setTokenError('') }}
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/15 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
-          <button onClick={validateToken} disabled={!githubToken || tokenValidating}
-            className="px-4 py-2.5 rounded-lg font-mono text-xs border border-white/20 text-white/50 hover:text-white/80 hover:border-white/30 disabled:opacity-40 transition-all">
-            {tokenValidating ? '...' : 'verify'}
-          </button>
-        </div>
-        {githubUser && (
-          <div className="mt-2 flex items-center gap-2 font-mono text-xs text-brand-green">
-            <span>✓</span>
-            <span>Authenticated as @{githubUser.username}</span>
-          </div>
-        )}
-        {tokenError && <p className="mt-2 font-mono text-xs text-red-400">{tokenError}</p>}
       </div>
     </div>
   )
@@ -350,7 +336,7 @@ export default function Home() {
         {file ? (
           <div className="animate-fadeIn">
             <div className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,255,135,0.1)', border: '1px solid rgba(0,255,135,0.3)' }}>
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M5 5h8l4 4v9a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="#00ff87" strokeWidth="1.5"/><path d="M13 5v4h4" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M5 5h8l4 4v9a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="#00ff87" strokeWidth="1.5" /><path d="M13 5v4h4" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round" /></svg>
             </div>
             <p className="font-mono text-sm text-brand-green font-semibold">{file.name}</p>
             <p className="font-mono text-xs text-muted mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
@@ -361,7 +347,7 @@ export default function Home() {
         ) : (
           <div>
             <div className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3v12M7 8l4-5 4 5" stroke="#4a4a6a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 16v1a3 3 0 003 3h10a3 3 0 003-3v-1" stroke="#4a4a6a" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3v12M7 8l4-5 4 5" stroke="#4a4a6a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M3 16v1a3 3 0 003 3h10a3 3 0 003-3v-1" stroke="#4a4a6a" strokeWidth="1.5" strokeLinecap="round" /></svg>
             </div>
             <p className="font-sans text-sm text-white/40">Drop your <span className="font-mono text-brand-green/70">.zip</span> here</p>
             <p className="font-mono text-xs text-muted mt-1">or click to browse · max 150MB</p>
@@ -374,7 +360,7 @@ export default function Home() {
           className="btn-primary w-full rounded-xl py-3.5 text-sm">
           <span className="flex items-center justify-center gap-2">
             {stage === 'uploading' ? (
-              <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70"/></svg>Uploading...</>
+              <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" /></svg>Uploading...</>
             ) : 'Upload & Continue →'}
           </span>
         </button>
@@ -510,7 +496,7 @@ export default function Home() {
       {stage === 'idle' && !result && (
         <div className="text-center py-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,255,135,0.08)', border: '1px solid rgba(0,255,135,0.2)' }}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="8" cy="7" r="3" stroke="#00ff87" strokeWidth="1.5"/><circle cx="20" cy="7" r="3" stroke="#00ff87" strokeWidth="1.5"/><circle cx="14" cy="21" r="3" stroke="#00ff87" strokeWidth="1.5"/><line x1="8" y1="10" x2="14" y2="18" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round"/><line x1="20" y1="10" x2="14" y2="18" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="8" cy="7" r="3" stroke="#00ff87" strokeWidth="1.5" /><circle cx="20" cy="7" r="3" stroke="#00ff87" strokeWidth="1.5" /><circle cx="14" cy="21" r="3" stroke="#00ff87" strokeWidth="1.5" /><line x1="8" y1="10" x2="14" y2="18" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round" /><line x1="20" y1="10" x2="14" y2="18" stroke="#00ff87" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">Ready to generate</h2>
           <div className="grid grid-cols-3 gap-3 mb-6 text-center">
@@ -529,7 +515,7 @@ export default function Home() {
           </div>
           <button onClick={handleGenerate} className="btn-primary w-full rounded-xl py-4 text-sm">
             <span className="flex items-center justify-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v5l3-3M2 8a6 6 0 1012 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v5l3-3M2 8a6 6 0 1012 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
               Generate Commit Timeline
             </span>
           </button>
@@ -563,12 +549,12 @@ export default function Home() {
 
           {/* Download */}
           <a href={result.downloadUrl} download className="btn-download flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
             Download Repository ZIP
           </a>
 
           {/* Push to GitHub */}
-          {githubUser && !pushResult && (
+          {session?.user && !pushResult && (
             <div className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
               <p className="font-mono text-xs text-white/40 uppercase tracking-widest">Push to GitHub</p>
               <div className="flex gap-2">
@@ -583,7 +569,7 @@ export default function Home() {
               <button onClick={handlePushToGithub} disabled={pushingToGithub || !repoName}
                 className="btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-40">
                 <span className="flex items-center justify-center gap-2">
-                  {pushingToGithub ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70"/></svg>Pushing...</> : '→ Push to GitHub'}
+                  {pushingToGithub ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" /></svg>Pushing...</> : '→ Push to GitHub'}
                 </span>
               </button>
             </div>
@@ -609,6 +595,54 @@ export default function Home() {
 
   const stepContent = [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5]
 
+  // ─── Render Landing Page ───────────────────────────────────────────────────────
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center pt-20"><div className="w-10 h-10 border-2 border-brand-green rounded-full animate-spin border-t-transparent" /></div>
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+        {/* Animated Orbs */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[10%] left-[20%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-20" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }} />
+          <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-10" style={{ background: '#00d4ff' }} />
+        </div>
+
+        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 text-center">
+          <p className="font-mono text-sm text-brand-green/80 uppercase tracking-[0.3em] mb-6 glow-text-green">$ git commit --history --legendary</p>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight mb-8">
+            Undetectable <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>Commit History</span><br />Generator
+          </h1>
+          <p className="text-lg md:text-xl text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed">
+            Turn empty projects into bustling, battle-tested repositories. Backdate realistic commit workflows directly into your GitHub account with a single click.
+          </p>
+
+          <button onClick={() => signIn('github')} className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-mono text-sm font-bold text-black transition-all hover:scale-105 active:scale-95" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
+            <div className="absolute inset-0 rounded-2xl opacity-50 group-hover:opacity-100 blur transition-opacity" style={{ background: 'inherit' }} />
+            <svg className="relative z-10 w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+            <span className="relative z-10">Sign in with GitHub to start →</span>
+          </button>
+        </div>
+
+        <div className="relative z-10 mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto px-6">
+          {[
+            { title: "Completely Undetectable", desc: "Randomized committer dates, varied file lengths, and advanced GitHub patterns." },
+            { title: "One-Click Push", desc: "No more downloading zips or typing terminal commands. We push directly via OAuth." },
+            { title: "AI-Ready Flexibility", desc: "Generate 50 to 5,000 commits matching realistic, backdated developer activity." }
+          ].map((feature, idx) => (
+            <div key={idx} className="p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
+              <h3 className="font-mono text-sm text-brand-green mb-2 glow-text-green">{feature.title}</h3>
+              <p className="text-white/40 text-sm leading-relaxed">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* Background glows */}
@@ -619,18 +653,18 @@ export default function Home() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="border-b border-white/5 px-6 py-4">
+        <header className="border-b border-white/5 px-6 py-4 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#0a0a0f"/><circle cx="12" cy="4" r="2" fill="#0a0a0f"/><circle cx="8" cy="12" r="2" fill="#0a0a0f"/><line x1="4" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5"/><line x1="12" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5"/></svg>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#0a0a0f" /><circle cx="12" cy="4" r="2" fill="#0a0a0f" /><circle cx="8" cy="12" r="2" fill="#0a0a0f" /><line x1="4" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5" /><line x1="12" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5" /></svg>
               </div>
               <span className="font-mono text-sm font-semibold tracking-wider text-white/90">GITTIME</span>
-              <span className="font-mono text-xs text-white/20 border border-white/10 px-2 py-0.5 rounded-full">v2.0</span>
+              <span className="font-mono text-xs text-white/20 border border-white/10 px-2 py-0.5 rounded-full">v2.0 PRO</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-slow" />
-              <span className="font-mono text-xs text-muted">ready</span>
+            <div className="flex items-center gap-4">
+              <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-slow shadow-[0_0_8px_#00ff87]" />
+              <button onClick={() => signOut()} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Sign Out</button>
             </div>
           </div>
         </header>
@@ -654,15 +688,13 @@ export default function Home() {
                   <div key={s.n} className="flex items-center gap-1">
                     <button
                       onClick={() => { if (s.n < step || (s.n === step + 1 && canProceed())) setStep(s.n as WizardStep) }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
-                        step === s.n ? 'bg-brand-green/15 text-brand-green border border-brand-green/30' :
-                        step > s.n ? 'text-white/40 hover:text-white/60' : 'text-white/20'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${step === s.n ? 'bg-brand-green/15 text-brand-green border border-brand-green/30' :
+                          step > s.n ? 'text-white/40 hover:text-white/60' : 'text-white/20'
+                        }`}
                     >
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${
-                        step > s.n ? 'bg-brand-green/20 text-brand-green' :
-                        step === s.n ? 'bg-brand-green text-black' : 'bg-white/10 text-white/30'
-                      }`}>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${step > s.n ? 'bg-brand-green/20 text-brand-green' :
+                          step === s.n ? 'bg-brand-green text-black' : 'bg-white/10 text-white/30'
+                        }`}>
                         {step > s.n ? '✓' : s.n}
                       </span>
                       {s.label}
@@ -800,12 +832,12 @@ function HeatmapPreview({ startDate, endDate, pattern, weekdaysOnly, fileCount }
   const total = Math.min(Math.round((end.getTime() - start.getTime()) / 86400000) + 1, 365)
 
   const DENSITY: Record<PatternName, number[]> = {
-    'active-sprint':   [0, 3, 4, 5, 4, 3, 1],
-    'side-project':    [1, 0, 0, 1, 2, 3, 2],
-    'daily-grind':     [1, 2, 2, 2, 2, 2, 1],
+    'active-sprint': [0, 3, 4, 5, 4, 3, 1],
+    'side-project': [1, 0, 0, 1, 2, 3, 2],
+    'daily-grind': [1, 2, 2, 2, 2, 2, 1],
     'weekend-warrior': [3, 0, 0, 0, 1, 4, 4],
-    'crunch-mode':     [2, 4, 5, 6, 5, 4, 3],
-    'casual':          [0, 1, 0, 1, 1, 0, 1],
+    'crunch-mode': [2, 4, 5, 6, 5, 4, 3],
+    'casual': [0, 1, 0, 1, 1, 0, 1],
   }
 
   const weights = DENSITY[pattern] || DENSITY['daily-grind']
@@ -827,8 +859,8 @@ function HeatmapPreview({ startDate, endDate, pattern, weekdaysOnly, fileCount }
           const intensity = v / max
           const color = intensity === 0 ? 'rgba(255,255,255,0.04)' :
             intensity < 0.3 ? 'rgba(0,255,135,0.15)' :
-            intensity < 0.6 ? 'rgba(0,255,135,0.35)' :
-            intensity < 0.85 ? 'rgba(0,255,135,0.6)' : '#00ff87'
+              intensity < 0.6 ? 'rgba(0,255,135,0.35)' :
+                intensity < 0.85 ? 'rgba(0,255,135,0.6)' : '#00ff87'
           return <div key={i} className="rounded-sm" style={{ width: '9px', height: '9px', background: color }} />
         })}
       </div>
