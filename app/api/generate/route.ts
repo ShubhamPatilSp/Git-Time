@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       authorStyle = 'descriptive',
       addMergeCommits = false,
       excludeFolders = [],
+      useAI = false,
     } = body
 
     if (!sessionId) return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
       authorStyle: authorStyle || 'descriptive',
       addMergeCommits: Boolean(addMergeCommits),
       excludeFolders: Array.isArray(excludeFolders) ? excludeFolders : [],
+      useAI: Boolean(useAI),
     })
 
     // Package the repo

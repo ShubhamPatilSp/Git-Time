@@ -104,6 +104,7 @@ export default function Home() {
   const [repoName, setRepoName] = useState('')
   const [isPrivateRepo, setIsPrivateRepo] = useState(false)
   const [pushResult, setPushResult] = useState<{ repoUrl: string } | null>(null)
+  const [useAI, setUseAI] = useState(false)
 
   const { data: session, status } = useSession()
 
@@ -112,8 +113,8 @@ export default function Home() {
     if (session?.user && authors[0].name === '' && authors[0].email === '') {
       setAuthors(prev => prev.map((a, i) => i === 0 ? {
         ...a,
-        name: session.user.name || session.user.email?.split('@')[0] || 'Developer',
-        email: session.user.email || 'dev@example.com',
+        name: session.user?.name || session.user?.email?.split('@')[0] || 'Developer',
+        email: session.user?.email || 'dev@example.com',
       } : a))
       setRepoName('my-project')
     }
@@ -191,6 +192,7 @@ export default function Home() {
           authorStyle,
           addMergeCommits,
           excludeFolders: excludeFolders.split(',').map(s => s.trim()).filter(Boolean),
+          useAI,
         }),
       })
 
@@ -286,7 +288,7 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-mono text-xs text-white/30 mb-1.5">Name</label>
-                  <input type="text" value={author.name} placeholder="Shubham Patil"
+                  <input type="text" value={author.name} placeholder="Enter Name"
                     onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, name: e.target.value } : a))}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
                 </div>
@@ -486,6 +488,20 @@ export default function Home() {
         <div>
           <p className="font-mono text-sm text-white/70">Inject merge commits</p>
           <p className="font-mono text-xs text-white/25">Adds realistic merge commits every 5–9 commits</p>
+        </div>
+      </label>
+
+      {/* AI Commits toggle */}
+      <label className="flex items-center gap-3 cursor-pointer mt-2 pt-4 border-t border-white/5">
+        <div className={`relative rounded-full transition-colors ${useAI ? 'shadow-[0_0_12px_rgba(0,212,255,0.4)]' : ''}`}
+          style={{ width: '40px', height: '22px', background: useAI ? 'linear-gradient(90deg, #00ff87, #00d4ff)' : 'rgba(255,255,255,0.1)' }}
+          onClick={() => setUseAI(p => !p)}>
+          <div className={`absolute top-0 w-4 h-4 rounded-full bg-white shadow transition-transform`}
+            style={{ margin: '3px', transform: useAI ? 'translateX(18px)' : 'translateX(0)' }} />
+        </div>
+        <div>
+          <p className={`font-mono text-sm font-semibold transition-colors ${useAI ? 'text-transparent bg-clip-text' : 'text-white/70'}`} style={useAI ? { backgroundImage: 'linear-gradient(90deg, #00ff87, #00d4ff)' } : {}}>Enable AI Commits (Gemini)</p>
+          <p className="font-mono text-xs text-white/40">Highly realistic commit messages based on live code</p>
         </div>
       </label>
     </div>
@@ -689,11 +705,11 @@ export default function Home() {
                     <button
                       onClick={() => { if (s.n < step || (s.n === step + 1 && canProceed())) setStep(s.n as WizardStep) }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${step === s.n ? 'bg-brand-green/15 text-brand-green border border-brand-green/30' :
-                          step > s.n ? 'text-white/40 hover:text-white/60' : 'text-white/20'
+                        step > s.n ? 'text-white/40 hover:text-white/60' : 'text-white/20'
                         }`}
                     >
                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${step > s.n ? 'bg-brand-green/20 text-brand-green' :
-                          step === s.n ? 'bg-brand-green text-black' : 'bg-white/10 text-white/30'
+                        step === s.n ? 'bg-brand-green text-black' : 'bg-white/10 text-white/30'
                         }`}>
                         {step > s.n ? '✓' : s.n}
                       </span>

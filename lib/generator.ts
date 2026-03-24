@@ -4,6 +4,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { generateMessage, sortFilesRealistically, shouldSkipFile } from './messages'
 import { PATTERNS, generateDaySchedule, generateTimestamps, PatternName } from './patterns'
+import { generateBatchedMessages } from './ai'
 
 const execAsync = promisify(exec)
 
@@ -26,6 +27,7 @@ export interface GenerateOptions {
   authorStyle: 'terse' | 'descriptive' | 'conventional'
   addMergeCommits: boolean
   excludeFolders: string[]
+  useAI?: boolean
   onProgress?: (current: number, total: number, message: string, file: string) => void
 }
 
@@ -173,6 +175,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     authorStyle,
     addMergeCommits,
     excludeFolders,
+    useAI,
     onProgress,
   } = options
 
@@ -232,6 +235,27 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
       daySlot.date.getTime()
     )
 
+    // Pre-calculate files for today for AI batching
+    const filesToCommitToday = []
+    let tempCommitsDone = commitsDone
+    for (let c = 0; c < commitsToday && tempCommitsDone < desiredCommits; c++) {
+      const currentFileIdx = tempCommitsDone % totalFiles
+      const filePath = allFiles[currentFileIdx]
+      const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
+      filesToCommitToday.push({ absolutePath: filePath, filePath: relPath })
+      tempCommitsDone++
+    }
+
+    let aiMessageMap: Record<string, string> = {}
+    if (useAI && filesToCommitToday.length > 0) {
+      const generated = await generateBatchedMessages(filesToCommitToday, authorStyle)
+      for (const g of generated) {
+        if (g.file && g.message) {
+          aiMessageMap[g.file] = g.message
+        }
+      }
+    }
+
     for (let c = 0; c < commitsToday && commitsDone < desiredCommits; c++) {
       // Cycle through files if desiredCommits > totalFiles
       const currentFileIdx = commitsDone % totalFiles
@@ -240,13 +264,16 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
       const ts = timestamps[Math.min(c, timestamps.length - 1)]
       const author = pickAuthor(authors, rng)
 
-      const message = generateMessage({
-        filePath: relPath,
-        index: commitsDone,
-        total: desiredCommits,
-        previousMessages,
-        authorStyle,
-      })
+      let message = aiMessageMap[relPath]
+      if (!message) {
+        message = generateMessage({
+          filePath: relPath,
+          index: commitsDone,
+          total: desiredCommits,
+          previousMessages,
+          authorStyle,
+        })
+      }
 
       previousMessages.push(message)
       if (previousMessages.length > 25) previousMessages.shift()
