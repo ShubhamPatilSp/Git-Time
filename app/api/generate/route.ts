@@ -67,7 +67,7 @@ async function processGenerationJob(
     if (!isPro) {
       await User.findOneAndUpdate(
         { email: userEmail },
-        { $inc: { freeRunsUsed: 1 } }
+        { $inc: { freeCommitsUsed: result.totalCommits, freeRunsUsed: 1 } }
       )
     }
 
@@ -84,11 +84,12 @@ async function processGenerationJob(
     })
 
     // Auto-cleanup extract path after success
+    // Increased to 10 minutes to avoid 404 on Push to GitHub
     setTimeout(async () => {
       try {
         await fsExtra.remove(extractPath)
       } catch { /* ok */ }
-    }, 60000)
+    }, 600000)
 
   } catch (error: any) {
     console.error('Job processing error:', error)
@@ -134,18 +135,16 @@ export async function POST(request: NextRequest) {
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const isPro = dbUser.isPro
+    const used = dbUser.freeCommitsUsed || 0
+    const requested = Number(totalCommits) || 0
 
     // 2. Enforce Free Tier Limits before accepting the job
     if (!isPro) {
-      if (dbUser.freeRunsUsed >= 1) {
+      if (used + requested > 100) {
         return NextResponse.json({ 
-          error: 'Free limit reached. One generation per account. Upgrade to Pro for unlimited access!',
+          error: `Limit exceeded. You have used ${used}/100 commit credits. Please upgrade to Pro for unlimited access!`,
           code: 'PAYMENT_REQUIRED' 
         }, { status: 402 })
-      }
-      
-      if (Number(totalCommits) > 100) {
-        return NextResponse.json({ error: 'Free tier is limited to 100 commits.' }, { status: 403 })
       }
       if (useAI || injectPRMerges || (fileTypeDensity && Object.keys(fileTypeDensity).length > 0)) {
         return NextResponse.json({ error: 'Pro feature detected. Please upgrade to unlock.' }, { status: 403 })

@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useWizard, PATTERNS, PatternName, toDateInputValue } from "./WizardContext"
 
 export function StepTimeline() {
-  const { session } = useSession() as any
+  const { data: session } = useSession() as any
   const isPro = !!session?.user?.isPro
   const { startDate, setStartDate, endDate, setEndDate, pattern, setPattern, weekdaysOnly, setWeekdaysOnly, fileCount } = useWizard()
 
@@ -41,16 +41,18 @@ export function StepTimeline() {
           <div className="mt-1 pt-2 border-t border-white/5">
             <div className="flex justify-between font-mono text-xs mb-1.5">
               <span className="text-white/40">Free Quota Used</span>
-              <span className={fileCount > 100 ? "text-brand-red font-bold" : "text-white/70"}>{fileCount} / 100 commits</span>
+              <span className={(session?.user?.freeCommitsUsed + fileCount) > 100 ? "text-brand-red font-bold" : "text-white/70"}>
+                {(session?.user?.freeCommitsUsed || 0) + fileCount} / 100 commits
+              </span>
             </div>
             <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all ${fileCount > 100 ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
-                style={{ width: `${Math.min((fileCount / 100) * 100, 100)}%` }} 
+                className={`h-full rounded-full transition-all ${(session?.user?.freeCommitsUsed + fileCount) > 100 ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
+                style={{ width: `${Math.min((( (session?.user?.freeCommitsUsed || 0) + fileCount) / 100) * 100, 100)}%` }} 
               />
             </div>
-            {fileCount > 100 && (
-               <p className="font-mono text-[10px] text-brand-red mt-1.5">Limit exceeded! Upgrade to Pro for unlimited commits.</p>
+            {(session?.user?.freeCommitsUsed + fileCount) > 100 && (
+               <p className="font-mono text-[10px] text-brand-red mt-1.5">Total lifetime limit reached! Upgrade to Pro for unlimited commits.</p>
             )}
           </div>
         )}

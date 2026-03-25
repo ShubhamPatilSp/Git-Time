@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useWizard, AUTHOR_STYLES, AuthorStyle } from './WizardContext'
 
 export function StepStyle({ setShowUpgradeModal }: { setShowUpgradeModal: (v: boolean) => void }) {
-  const { session } = useSession() as any
+  const { data: session } = useSession() as any
   const isPro = !!session?.user?.isPro
   const { 
     authors, weekdaysOnly, toggledOffDates, 

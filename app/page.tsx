@@ -24,6 +24,8 @@ function WizardLayout() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [repoName, setRepoName] = useState('') // For Step 1 effect
+  const freeCommitsUsed = (session?.user as any)?.freeCommitsUsed || 0
+  const creditsExhausted = !isPro && (freeCommitsUsed + fileCount > 100)
 
   // Auto-fill author email from GitHub if available
   useEffect(() => {
@@ -112,7 +114,7 @@ function WizardLayout() {
             <div className="p-4 rounded-2xl border border-white/5 bg-white/2">
               <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-4">Free</p>
               <div className="space-y-2.5 text-sm">
-                {['Basic commit messages', '100 commit limit', '1 use per account'].map(f => (
+                {['Basic commit messages', '100 total commits', 'Direct GitHub Push'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/40"><span className="text-white/20">–</span>{f}</div>
                 ))}
                 {['Fake PRs & Branches', 'File Density Control', 'AI Engine (Gemini)'].map(f => (
@@ -382,7 +384,10 @@ function WizardLayout() {
                   <svg className="w-10 h-10 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" /></svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight">Automated Server-Side Push</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight flex items-center gap-3">
+                    Automated Server-Side Push
+                    <span className="text-[10px] bg-[#00ff87]/10 text-[#00ff87] border border-[#00ff87]/30 px-2.5 py-1 rounded-full font-mono uppercase tracking-widest animate-pulse">Now Free</span>
+                  </h3>
                   <p className="text-white/40 leading-relaxed text-[15px] max-w-2xl">Forget downloading ZIP files. Authorize via OAuth and GitTime builds the <span className="font-mono text-white/50 text-[13px]">.git</span> directory in memory and pushes directly to a new repository on your profile.</p>
 
                   <div className="mt-6 flex items-center gap-6">
@@ -592,7 +597,10 @@ function WizardLayout() {
                 {STEPS.map((s: { n: number, label: string }, i: number) => (
                   <div key={s.n} className="flex items-center gap-1">
                     <button
-                      onClick={() => { if (s.n < step || (s.n === step + 1 && canProceed())) setStep(s.n as WizardStep) }}
+                      onClick={() => {
+                        if (s.n > step && step >= 3 && creditsExhausted) { setShowUpgradeModal(true); return }
+                        if (s.n < step || (s.n === step + 1 && canProceed())) setStep(s.n as WizardStep)
+                      }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${step === s.n ? 'bg-brand-green/15 text-brand-green border border-brand-green/30' :
                         step > s.n ? 'text-white/40 hover:text-white/60' : 'text-white/20'
                         }`}
@@ -631,7 +639,9 @@ function WizardLayout() {
                 {step < 5 && (
                   <button
                     onClick={() => {
-                      if (step === 2 && !sessionId) { (uploadFile as any)(); return } // Ensure uploadFile is handled if exposed, wait uploadFile must be exposed from context!
+                      if (step === 2 && !sessionId) { (uploadFile as any)(); return }
+                      // Block forward navigation from Timeline (step 3) onwards if credits exhausted
+                      if (step >= 3 && creditsExhausted) { setShowUpgradeModal(true); return }
                       setStep(s => Math.min(5, s + 1) as WizardStep)
                     }}
                     disabled={!canProceed() && !(step === 2 && file)}

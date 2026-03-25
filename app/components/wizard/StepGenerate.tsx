@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useWizard } from './WizardContext'
 
 export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v: boolean) => void }) {
-  const { session } = useSession() as any
+  const { data: session, update: updateSession } = useSession() as any
   const {
     stage, setStage, result, setResult, visibleCommits, setVisibleCommits,
     progress, setProgress, progressMsg, setProgressMsg, setErrorMsg,
@@ -94,6 +94,14 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
         setStage('done')
         setProgress(100)
         setProgressMsg('Complete!')
+
+        // Refresh the session so freeCommitsUsed is up-to-date across all components
+        await updateSession()
+
+        // Show upgrade modal if credits are now exhausted
+        if (typeof data.freeCommitsUsed === 'number' && data.freeCommitsUsed >= 100) {
+          setShowUpgradeModal(true)
+        }
 
         data.result.commits?.forEach((commit: any, i: number) => {
           setTimeout(() => setVisibleCommits(prev => [...prev, commit]), i * 40)

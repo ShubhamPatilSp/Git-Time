@@ -49,6 +49,8 @@ export const authOptions: NextAuthOptions = {
             session.user.isPro = dbUser.isPro;
             // @ts-ignore
             session.user.freeRunsUsed = dbUser.freeRunsUsed;
+            // @ts-ignore
+            session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
           }
         } catch (error) {
           console.error("Error fetching user from DB for session:", error);

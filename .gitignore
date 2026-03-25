@@ -36,3 +36,7 @@ next-env.d.ts
 # temp files
 /tmp/
 /public/output/
+
+# Temporary DB scripts
+reset-credits.mjs
+list-users.mjs

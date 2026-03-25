@@ -34,10 +34,11 @@ export async function GET(
     }
 
     const stat = await fsExtra.stat(filePath)
-    const { createReadStream } = require('fs')
-    const stream = createReadStream(filePath)
-
-    return new NextResponse(stream as any, {
+    
+    // Create a Web-standard ReadableStream from the file
+    const fileBuffer = await fsExtra.readFile(filePath)
+    
+    return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import connectToDatabase from "@/lib/db"
 import Job from "@/models/Job"
+import User from "@/models/User"
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,18 +28,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 })
     }
 
+    // Fetch latest credit balance when job is completed
+    let freeCommitsUsed: number | undefined
+    if (job.status === 'completed') {
+      const dbUser = await User.findOne({ email: session.user.email }).lean() as any
+      freeCommitsUsed = dbUser?.freeCommitsUsed || 0
+    }
+
     return NextResponse.json({
       status: job.status,
       progress: job.progress,
       message: job.message,
       error: job.error,
       downloadUrl: job.downloadUrl,
+      freeCommitsUsed,
       result: job.status === 'completed' ? {
         totalCommits: job.totalCommits,
         totalDays: job.totalDays,
         startDate: job.startDate,
         endDate: job.endDate,
         commits: job.commits,
+        downloadUrl: job.downloadUrl,
       } : null
     })
   } catch (error) {
