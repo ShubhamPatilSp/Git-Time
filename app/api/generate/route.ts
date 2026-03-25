@@ -2,29 +2,101 @@ import { NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
-import AdmZip from 'adm-zip'
+import archiver from 'archiver'
+import fs from 'fs'
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
+import connectToDatabase from "@/lib/db"
+import User from "@/models/User"
+import Job from "@/models/Job"
 import { generateCommits, Author } from '@/lib/generator'
 import { PatternName } from '@/lib/patterns'
+import { v4 as uuidv4 } from 'uuid'
 
 export const runtime = 'nodejs'
+// Keep max duration high just in case, though the initial response is fast
 export const maxDuration = 300
 
 const TMP_DIR = join(tmpdir(), 'gittime-tmp')
 const OUTPUT_DIR = join(tmpdir(), 'gittime-tmp', 'output')
 
-async function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): Promise<void> {
-  const items = await fsExtra.readdir(dirPath, { withFileTypes: true })
-  for (const item of items) {
-    const fullPath = join(dirPath, item.name)
-    const entryName = zipPath ? `${zipPath}/${item.name}` : item.name
-    if (item.isDirectory()) {
-      await addDirectoryToZip(zip, fullPath, entryName)
-    } else {
-      try {
-        const content = await fsExtra.readFile(fullPath)
-        zip.addFile(entryName, content)
-      } catch { /* skip unreadable */ }
+// The async worker function that runs detached from the HTTP response
+async function processGenerationJob(
+  jobId: string,
+  userEmail: string,
+  sessionId: string,
+  extractPath: string,
+  options: any,
+  isPro: boolean
+) {
+  try {
+    await connectToDatabase()
+    await Job.findOneAndUpdate({ jobId }, { status: 'processing', message: 'Initializing generation...', progress: 5 })
+
+    const result = await generateCommits({
+      ...options,
+      onProgress: async (current: number, total: number, message: string) => {
+        // Update job progress (reserve last 10% for zipping)
+        const progress = 5 + Math.floor((current / total) * 85)
+        await Job.findOneAndUpdate({ jobId }, { progress, message }).catch(() => {})
+      }
+    })
+
+    await Job.findOneAndUpdate({ jobId }, { message: 'Zipping repository...', progress: 90 })
+
+    await fsExtra.ensureDir(OUTPUT_DIR)
+    const outputFileName = `gittime-${sessionId.slice(0, 8)}.zip`
+    const outputPath = join(OUTPUT_DIR, outputFileName)
+
+    // Stream generation to avoid in-memory limits
+    await new Promise<void>((resolve, reject) => {
+      const output = fs.createWriteStream(outputPath)
+      const archive = archiver('zip', { zlib: { level: 9 } })
+
+      output.on('close', () => resolve())
+      archive.on('error', (err) => reject(err))
+
+      archive.pipe(output)
+      
+      // We don't want to include the surrounding absolute path, just the contents
+      archive.directory(extractPath, false)
+      archive.finalize()
+    })
+
+    // Increment usage for free users upon successful generation
+    if (!isPro) {
+      await User.findOneAndUpdate(
+        { email: userEmail },
+        { $inc: { freeRunsUsed: 1 } }
+      )
     }
+
+    await Job.findOneAndUpdate({ jobId }, { 
+      status: 'completed', 
+      progress: 100, 
+      message: 'Complete!',
+      downloadUrl: `/api/download/${outputFileName}`,
+      totalCommits: result.totalCommits,
+      totalDays: result.totalDays,
+      startDate: result.startDate,
+      endDate: result.endDate,
+      commits: result.commits.slice(0, 100) // Keep the DB document size reasonable
+    })
+
+    // Auto-cleanup extract path after success
+    setTimeout(async () => {
+      try {
+        await fsExtra.remove(extractPath)
+      } catch { /* ok */ }
+    }, 60000)
+
+  } catch (error: any) {
+    console.error('Job processing error:', error)
+    await connectToDatabase()
+    await Job.findOneAndUpdate({ jobId }, { 
+      status: 'failed', 
+      error: error?.message || 'Generation failed internally'
+    })
   }
 }
 
@@ -41,6 +113,8 @@ export async function POST(request: NextRequest) {
       commitsPerDay = 1,
       branchName = 'main',
       weekdaysOnly = false,
+      timezone,
+      toggledOffDates,
       authorStyle = 'descriptive',
       addMergeCommits = false,
       excludeFolders = [],
@@ -48,6 +122,35 @@ export async function POST(request: NextRequest) {
       injectPRMerges = false,
       fileTypeDensity,
     } = body
+
+    // 1. Check Authentication & Plan
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Auth required to generate' }, { status: 401 })
+    }
+
+    await connectToDatabase()
+    const dbUser = await User.findOne({ email: session.user.email })
+    if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const isPro = dbUser.isPro
+
+    // 2. Enforce Free Tier Limits before accepting the job
+    if (!isPro) {
+      if (dbUser.freeRunsUsed >= 1) {
+        return NextResponse.json({ 
+          error: 'Free limit reached. One generation per account. Upgrade to Pro for unlimited access!',
+          code: 'PAYMENT_REQUIRED' 
+        }, { status: 402 })
+      }
+      
+      if (Number(totalCommits) > 100) {
+        return NextResponse.json({ error: 'Free tier is limited to 100 commits.' }, { status: 403 })
+      }
+      if (useAI || injectPRMerges || (fileTypeDensity && Object.keys(fileTypeDensity).length > 0)) {
+        return NextResponse.json({ error: 'Pro feature detected. Please upgrade to unlock.' }, { status: 403 })
+      }
+    }
 
     if (!sessionId) return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
     if (!authors?.length) return NextResponse.json({ error: 'At least one author required' }, { status: 400 })
@@ -58,8 +161,6 @@ export async function POST(request: NextRequest) {
     if (!(await fsExtra.pathExists(extractPath))) {
       return NextResponse.json({ error: 'Session not found or expired. Please upload again.' }, { status: 404 })
     }
-
-    await fsExtra.ensureDir(OUTPUT_DIR)
 
     const parsedStart = new Date(startDate || Date.now() - 30 * 24 * 60 * 60 * 1000)
     const parsedEnd = new Date(endDate || Date.now())
@@ -74,7 +175,15 @@ export async function POST(request: NextRequest) {
       weight: Number(a.weight) || 100,
     }))
 
-    const result = await generateCommits({
+    const jobId = uuidv4()
+
+    await Job.create({
+      jobId,
+      userId: session.user.email,
+      status: 'pending'
+    })
+
+    const options = {
       extractPath,
       startDate: parsedStart,
       endDate: parsedEnd,
@@ -84,40 +193,24 @@ export async function POST(request: NextRequest) {
       commitsPerDay: Number(commitsPerDay),
       branchName: branchName || 'main',
       weekdaysOnly: Boolean(weekdaysOnly),
+      timezone: timezone ? String(timezone) : undefined,
+      toggledOffDates: Array.isArray(toggledOffDates) ? toggledOffDates : undefined,
       authorStyle: authorStyle || 'descriptive',
       addMergeCommits: Boolean(addMergeCommits),
+      injectPRMerges: Boolean(injectPRMerges),
       excludeFolders: Array.isArray(excludeFolders) ? excludeFolders : [],
       useAI: Boolean(useAI),
       fileTypeDensity: fileTypeDensity && typeof fileTypeDensity === 'object' ? fileTypeDensity : undefined,
-    })
+    }
 
-    // Package the repo
-    const outputFileName = `gittime-${sessionId.slice(0, 8)}.zip`
-    const outputPath = join(OUTPUT_DIR, outputFileName)
+    // Spawn async background task (fire and forget)
+    // Note: On Vercel this might be suspended if deployed edge, but works reliably locally and on VPS
+    processGenerationJob(jobId, session.user.email, sessionId, extractPath, options, isPro).catch(e => console.error("Unhandled worker error:", e))
 
-    const zip = new AdmZip()
-    await addDirectoryToZip(zip, extractPath, '')
-    zip.writeZip(outputPath)
-
-    // Auto-cleanup after 15 minutes
-    setTimeout(async () => {
-      try {
-        await fsExtra.remove(sessionDir)
-        await fsExtra.remove(outputPath)
-      } catch { /* ok */ }
-    }, 15 * 60 * 1000)
-
-    return NextResponse.json({
-      downloadUrl: `/api/download/${outputFileName}`,
-      totalCommits: result.totalCommits,
-      totalDays: result.totalDays,
-      startDate: result.startDate,
-      endDate: result.endDate,
-      commits: result.commits.slice(0, 100),
-    })
+    return NextResponse.json({ jobId })
   } catch (error: unknown) {
-    console.error('Generate error:', error)
-    const message = error instanceof Error ? error.message : 'Generation failed'
+    console.error('API endpoint error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to queue generation'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

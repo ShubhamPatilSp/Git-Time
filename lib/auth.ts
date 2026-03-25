@@ -1,5 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
+import connectToDatabase from "./db";
+import User from "../models/User";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,6 +16,20 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user }) {
+      if (user?.email) {
+        try {
+          await connectToDatabase();
+          let dbUser = await User.findOne({ email: user.email });
+          if (!dbUser) {
+            await User.create({ email: user.email });
+          }
+        } catch (error) {
+          console.error("Error creating user in DB during signIn:", error);
+        }
+      }
+      return true;
+    },
     async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token;
@@ -23,6 +39,22 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // @ts-ignore
       session.accessToken = token.accessToken;
+      
+      if (session.user?.email) {
+        try {
+          await connectToDatabase();
+          const dbUser = await User.findOne({ email: session.user.email }).lean();
+          if (dbUser) {
+            // @ts-ignore
+            session.user.isPro = dbUser.isPro;
+            // @ts-ignore
+            session.user.freeRunsUsed = dbUser.freeRunsUsed;
+          }
+        } catch (error) {
+          console.error("Error fetching user from DB for session:", error);
+        }
+      }
+      
       return session;
     },
   },

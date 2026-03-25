@@ -185,7 +185,8 @@ export function generateDaySchedule(
   endDate: Date,
   totalCommits: number,
   pattern: CommitPattern,
-  seed: number = Date.now()
+  seed: number = Date.now(),
+  toggledOffDates?: string[]
 ): DaySlot[] {
   const rng = seededRandom(seed)
 
@@ -199,11 +200,16 @@ export function generateDaySchedule(
   while (current <= end) {
     const dow = current.getDay()
     const isWeekend = dow === 0 || dow === 6
-    allDays.push({
-      date: new Date(current),
-      commitCount: 0,
-      isWeekend,
-    })
+    const dateStr = current.toISOString().slice(0, 10)
+    
+    // Only add if not manually toggled off
+    if (!toggledOffDates?.includes(dateStr)) {
+      allDays.push({
+        date: new Date(current),
+        commitCount: 0,
+        isWeekend,
+      })
+    }
     current.setDate(current.getDate() + 1)
   }
 
@@ -277,11 +283,21 @@ export function pickHour(hourWeights: number[], rng: () => number): number {
   return 10
 }
 
+export function getTimezoneOffset(timeZone: string, date: Date): number {
+  if (!timeZone || timeZone === 'UTC') return 0;
+  try {
+    const utfDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
+    return (tzDate.getTime() - utfDate.getTime()) / 3600000;
+  } catch { return 0; }
+}
+
 export function generateTimestamps(
   date: Date,
   count: number,
   pattern: CommitPattern,
-  seed: number
+  seed: number,
+  timezone?: string
 ): { authorDate: Date; committerDate: Date }[] {
   const rng = seededRandom(seed)
   const results: { authorDate: Date; committerDate: Date }[] = []
@@ -299,10 +315,15 @@ export function generateTimestamps(
     }
   }
 
+  const offset = getTimezoneOffset(timezone || 'UTC', date);
+
   for (const hour of hours) {
     const safeHour = Math.min(hour, 23)
     const authorDate = new Date(date)
-    authorDate.setHours(safeHour, Math.floor(rng() * 60), Math.floor(rng() * 60), 0)
+    
+    // Set hours natively UTC to bypass the server's actual local timezone, 
+    // adjusting for the generated offset of the user's requested locale.
+    authorDate.setUTCHours(safeHour - offset, Math.floor(rng() * 60), Math.floor(rng() * 60), 0)
 
     // Committer date 1-3 minutes after author (realistic git behavior)
     const committerDate = new Date(authorDate)

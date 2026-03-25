@@ -33,14 +33,16 @@ export async function GET(
       )
     }
 
-    const fileBuffer = await fsExtra.readFile(filePath)
+    const stat = await fsExtra.stat(filePath)
+    const { createReadStream } = require('fs')
+    const stream = createReadStream(filePath)
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(stream as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': String(fileBuffer.length),
+        'Content-Length': String(stat.size),
       },
     })
   } catch (error: unknown) {

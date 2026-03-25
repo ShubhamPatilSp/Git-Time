@@ -24,6 +24,8 @@ export interface GenerateOptions {
   commitsPerDay: number
   branchName: string
   weekdaysOnly: boolean
+  timezone?: string
+  toggledOffDates?: string[]
   authorStyle: 'terse' | 'descriptive' | 'conventional'
   addMergeCommits: boolean
   excludeFolders: string[]
@@ -147,13 +149,11 @@ async function spawnFeatureBranch(
   const branchName = `feature/${FEATURE_NAMES[nameIdx]}-${prNumber}`
 
   try {
-    // Create and switch to feature branch
     await gitExec(`git checkout -b ${branchName}`, {}, repoPath)
 
     const nameEsc = author.name.replace(/"/g, "'")
     const emailEsc = author.email.replace(/"/g, "'")
 
-    // Add commits to the feature branch
     for (let i = 0; i < filePaths.length; i++) {
       const filePath = filePaths[i]
       const message = messages[i] || `update ${filePath}`
@@ -165,7 +165,6 @@ async function spawnFeatureBranch(
         await gitExec(`git add -- "${relPath}"`, {}, repoPath)
         const staged = await gitExec('git diff --cached --name-only', {}, repoPath)
         if (!staged?.trim()) continue
-
         await gitExec(
           `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -m "${safeMsg}"`,
           {
@@ -181,7 +180,7 @@ async function spawnFeatureBranch(
       } catch { /* individual commit errors are non-fatal */ }
     }
 
-    // Switch back to main and merge with --no-ff for a real PR graph
+    // Merge back to main with --no-ff (authentic PR merge graph)
     await gitExec(`git checkout ${mainBranch}`, {}, repoPath)
     const mergeDate = new Date(baseDate.getTime() + filePaths.length * 3600000 + 600000)
     const prMsg = `Merge pull request #${prNumber} from ${branchName}`
@@ -201,11 +200,8 @@ async function spawnFeatureBranch(
       )
     } catch { /* merge may fail if nothing changed */ }
 
-    // Cleanup: delete the feature branch
     try { await gitExec(`git branch -d ${branchName}`, {}, repoPath) } catch { /* ok */ }
-
-  } catch (err) {
-    // If anything goes wrong, make sure we're back on main
+  } catch {
     try { await gitExec(`git checkout ${mainBranch}`, {}, repoPath) } catch { /* ok */ }
   }
 }
@@ -259,6 +255,8 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     totalCommits: requestedCommits,
     branchName,
     weekdaysOnly,
+    timezone,
+    toggledOffDates,
     authorStyle,
     addMergeCommits,
     excludeFolders,
@@ -317,7 +315,8 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     endDate,
     desiredCommits,
     activePattern,
-    startDate.getTime()
+    startDate.getTime(),
+    toggledOffDates
   )
 
   if (daySchedule.length === 0) {
@@ -330,12 +329,11 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
 
   const commitEntries: CommitEntry[] = []
   const previousMessages: string[] = []
-  const rng = seededRng(startDate.getTime())
-
   let commitsDone = 0
   let sinceLastMerge = 0
   let sinceLastPR = 0
-  let prNumber = Math.floor(rng() * 5) + 1 // Start PR counter at a random low number
+  let prNumber = Math.floor(Math.random() * 5) + 1
+  const rng = seededRng(startDate.getTime())
 
   // Main commit loop — iterate over scheduled days
   for (const daySlot of daySchedule) {
@@ -343,13 +341,6 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
 
     const commitsToday = Math.min(daySlot.commitCount, desiredCommits - commitsDone)
     if (commitsToday === 0) continue
-
-    const timestamps = generateTimestamps(
-      daySlot.date,
-      commitsToday,
-      activePattern,
-      daySlot.date.getTime()
-    )
 
     // Pre-calculate files for today for AI batching
     const filesToCommitToday = []
@@ -378,8 +369,12 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
       const currentFileIdx = commitsDone % poolSize
       const filePath = weightedPool[currentFileIdx]
       const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
-      const ts = timestamps[Math.min(c, timestamps.length - 1)]
+
+      // Pick author FIRST, then generate timestamp using THEIR timezone
       const author = pickAuthor(authors, rng)
+      const authorTimezone = (author as any).timezone || timezone || 'UTC'
+      const singleTs = generateTimestamps(daySlot.date, 1, activePattern, daySlot.date.getTime() + c * 37, authorTimezone)
+      const ts = singleTs[0]
 
       let message = aiMessageMap[relPath]
       if (!message) {
@@ -422,7 +417,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
       // Inject real PR feature branch every 20-30 commits
       const prThreshold = Math.floor(rng() * 11) + 20
       if (injectPRMerges && sinceLastPR >= prThreshold && commitsDone < desiredCommits - 12) {
-        const branchCommitCount = Math.floor(rng() * 6) + 5 // 5-10 commits
+        const branchCommitCount = Math.floor(rng() * 6) + 5
         const branchFiles: string[] = []
         const branchMessages: string[] = []
         for (let bi = 0; bi < branchCommitCount; bi++) {
