@@ -5,6 +5,10 @@ import AuthProvider from './components/SessionProvider'
 export const metadata: Metadata = {
   title: 'GitTime — Commit Timeline Generator',
   description: 'Transform your project into a realistic Git commit history across multiple days.',
+  icons: {
+    icon: '/output/logo.png',
+    apple: '/output/logo.png',
+  },
 }
 
 export default function RootLayout({

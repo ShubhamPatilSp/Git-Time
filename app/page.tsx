@@ -13,11 +13,11 @@ import { HeatmapPreview } from './components/wizard/HeatmapPreview'
 function WizardLayout() {
   const { data: session, status } = useSession()
   const isPro = !!(session?.user as any)?.isPro
-  
+
   const {
     step, setStep, stage, setStage, errorMsg, setErrorMsg,
     file, sessionId, setSessionId, setFile, uploadFile,
-    fileCount, startDate, endDate, pattern, weekdaysOnly, 
+    fileCount, startDate, endDate, pattern, weekdaysOnly,
     toggledOffDates, setToggledOffDates, timezone, injectPRMerges,
     addMergeCommits, result, visibleCommits, authors, setAuthors, githubToken
   } = useWizard()
@@ -86,7 +86,7 @@ function WizardLayout() {
   }
 
   const stepContent = [
-    null, 
+    null,
     () => <StepIdentity setShowUpgradeModal={setShowUpgradeModal} />,
     () => <StepUpload />,
     () => <StepTimeline />,
@@ -101,7 +101,7 @@ function WizardLayout() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 rounded-full blur-[80px] opacity-30" style={{ background: 'radial-gradient(circle, #00ff87, #00d4ff)' }} />
         <div className="relative p-8">
           <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">✕</button>
-          
+
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono text-[#00ff87] border border-[#00ff87]/20 bg-[#00ff87]/5 mb-4">✦ One-Time Lifetime Upgrade</div>
             <h2 className="text-3xl font-black text-white mb-2">Unlock <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">GitTime Pro</span></h2>
@@ -200,7 +200,7 @@ function WizardLayout() {
       const visibleCount = Math.max(0, Math.min(line.text.length, displayedChars - lineStart))
       const visibleText = line.text.slice(0, visibleCount)
       const isCurrentLine = displayedChars >= lineStart && displayedChars < lineStart + line.text.length
-      
+
       return (
         <span key={lineIdx}>
           {line.gradient ? (
@@ -298,7 +298,7 @@ function WizardLayout() {
             <div className="md:col-span-2 premium-card p-10 rounded-[28px] group relative overflow-hidden">
               <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-[#00d4ff]/15 to-transparent rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s] ease-out z-0" />
-              
+
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-10 h-10 rounded-xl bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-center justify-center">
@@ -309,7 +309,7 @@ function WizardLayout() {
 
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight leading-snug">Context-Aware<br />AI Commits</h3>
                 <p className="text-white/40 leading-relaxed mb-8 max-w-lg text-[15px]">The generator analyzes your actual code files to write highly specific, context-aware commit messages indistinguishable from senior developer logs.</p>
-                
+
                 <div className="font-mono text-[13px] p-5 rounded-2xl bg-[#050508] border border-white/[0.04] relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#00d4ff]/20 to-transparent" />
                   <p className="text-white/30 mb-2">$ gemini generate-commit --file auth.ts</p>
@@ -323,7 +323,7 @@ function WizardLayout() {
             <div className="premium-card p-10 rounded-[28px] group relative overflow-hidden">
               <div className="absolute -top-32 -left-32 w-80 h-80 bg-gradient-to-br from-[#b026ff]/15 to-transparent rounded-full blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s] ease-out z-0" />
-              
+
               <div className="relative z-10">
                 <div className="w-10 h-10 rounded-xl bg-[#b026ff]/10 border border-[#b026ff]/20 flex items-center justify-center mb-8">
                   <svg className="w-5 h-5 text-[#b026ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" /></svg>
@@ -331,7 +331,7 @@ function WizardLayout() {
 
                 <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">Fake Pull<br />Requests</h3>
                 <p className="text-white/40 leading-relaxed text-[15px]">It doesn't just push a straight line to main. GitTime automatically branches out, commits, and simulates PR merges.</p>
-                
+
                 <div className="mt-8 flex items-center gap-2">
                   <div className="flex -space-x-1">
                     <div className="w-2 h-2 rounded-full bg-[#b026ff]" />
@@ -347,7 +347,7 @@ function WizardLayout() {
             <div className="premium-card p-10 rounded-[28px] group relative overflow-hidden">
               <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-gradient-to-tl from-[#00ff87]/15 to-transparent rounded-full blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: '2s' }} />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s] ease-out z-0" />
-              
+
               <div className="relative z-10">
                 <div className="w-10 h-10 rounded-xl bg-[#00ff87]/10 border border-[#00ff87]/20 flex items-center justify-center mb-8">
                   <svg className="w-5 h-5 text-[#00ff87]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" /></svg>
@@ -355,7 +355,7 @@ function WizardLayout() {
 
                 <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">Commit Density<br />Targeting</h3>
                 <p className="text-white/40 leading-relaxed text-[15px]">Dial up the <span className="text-white/60 font-mono text-[13px]">.tsx</span> and <span className="text-white/60 font-mono text-[13px]">.css</span> density. The engine weights the random selection pool based on your settings.</p>
-                
+
                 {/* Mini density bars */}
                 <div className="mt-8 space-y-2">
                   <div className="flex items-center gap-3">
@@ -378,7 +378,7 @@ function WizardLayout() {
             <div className="md:col-span-2 premium-card p-10 rounded-[28px] group relative overflow-hidden">
               <div className="absolute -bottom-40 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-white/[0.08] to-transparent rounded-full blur-[120px] animate-glow-pulse pointer-events-none" style={{ animationDelay: '3s' }} />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s] ease-out z-0" />
-              
+
               <div className="relative z-10 flex items-start gap-8">
                 <div className="flex-shrink-0 hidden md:flex w-20 h-20 rounded-2xl bg-white/[0.03] border border-white/[0.06] items-center justify-center">
                   <svg className="w-10 h-10 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" /></svg>
@@ -386,7 +386,7 @@ function WizardLayout() {
                 <div>
                   <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight">Automated Server-Side Push</h3>
                   <p className="text-white/40 leading-relaxed text-[15px] max-w-2xl">Forget downloading ZIP files. Authorize via OAuth and GitTime builds the <span className="font-mono text-white/50 text-[13px]">.git</span> directory in memory and pushes directly to a new repository on your profile.</p>
-                  
+
                   <div className="mt-6 flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#00ff87]" />
@@ -412,7 +412,7 @@ function WizardLayout() {
         {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
         <section id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-20">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-          
+
           <div className="text-center mb-20">
             <div className="section-label mb-6 mx-auto w-fit">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87]" />
@@ -442,7 +442,7 @@ function WizardLayout() {
               <div className="p-6 font-mono text-[13px] leading-7 text-[#00ff87]/70 min-h-[340px] flex flex-col justify-end overflow-hidden relative bg-[#050508]">
                 <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-[#050508] to-transparent z-10 pointer-events-none" />
                 <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#050508] to-transparent z-10 pointer-events-none" />
-                
+
                 <div className="animate-marquee-up space-y-2 whitespace-nowrap opacity-90 pb-2">
                   <p className="text-white/30">&gt; Authenticating GitHub scopes...</p>
                   <p className="text-white/70">✓ Token verified. User: &quot;Senior Dev&quot;</p>
@@ -466,7 +466,7 @@ function WizardLayout() {
               <div className="premium-card p-8 rounded-[24px] group relative overflow-hidden">
                 <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-[#050508] to-transparent z-10 pointer-events-none" />
                 <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-[#00ff87]/10 to-transparent rounded-full blur-[80px] pointer-events-none" />
-                
+
                 <div className="flex items-center gap-2 mb-6">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#00ff87] animate-pulse" />
                   <h4 className="font-mono text-[10px] text-[#00ff87]/60 tracking-[0.2em] uppercase font-medium">The Result</h4>
@@ -655,8 +655,8 @@ function WizardLayout() {
                   <span className="font-mono text-xs text-white/40 uppercase tracking-widest">contribution preview</span>
                 </div>
                 <div className="p-4">
-                  <HeatmapPreview 
-                    startDate={startDate} endDate={endDate} pattern={pattern} weekdaysOnly={weekdaysOnly} fileCount={fileCount} 
+                  <HeatmapPreview
+                    startDate={startDate} endDate={endDate} pattern={pattern} weekdaysOnly={weekdaysOnly} fileCount={fileCount}
                     toggledOffDates={toggledOffDates}
                     onToggleDate={dateStr => setToggledOffDates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }))}
                     timezone={timezone}
