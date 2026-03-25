@@ -235,9 +235,7 @@ function WizardLayout() {
         {/* Nav */}
         <nav className="w-full relative z-20 flex items-center justify-between px-6 py-5 max-w-7xl mx-auto border-b border-white/[0.04]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#050508" /><circle cx="12" cy="4" r="2" fill="#050508" /><circle cx="8" cy="12" r="2" fill="#050508" /><line x1="4" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /><line x1="12" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /></svg>
-            </div>
+            <img src="/logo.png" alt="GitTime" className="w-8 h-8 rounded-lg object-contain" />
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-white/90">GITTIME</span>
             <span className="font-mono text-[10px] font-medium px-2.5 py-1 rounded-full border border-white/[0.06] text-white/30 bg-white/[0.03]">v2.0</span>
           </div>
@@ -538,9 +536,7 @@ function WizardLayout() {
         <footer className="w-full relative z-20 border-t border-white/[0.04] py-10 bg-[#050508]/90 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#050508" /><circle cx="12" cy="4" r="2" fill="#050508" /><circle cx="8" cy="12" r="2" fill="#050508" /><line x1="4" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /><line x1="12" y1="6" x2="8" y2="10" stroke="#050508" strokeWidth="1.5" /></svg>
-              </div>
+              <img src="/logo.png" alt="GitTime" className="w-6 h-6 rounded-lg object-contain" />
               <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
             </div>
             <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p>
@@ -564,9 +560,7 @@ function WizardLayout() {
         <header className="border-b border-white/5 px-6 py-4 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00ff87, #00d4ff)' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" fill="#0a0a0f" /><circle cx="12" cy="4" r="2" fill="#0a0a0f" /><circle cx="8" cy="12" r="2" fill="#0a0a0f" /><line x1="4" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5" /><line x1="12" y1="6" x2="8" y2="10" stroke="#0a0a0f" strokeWidth="1.5" /></svg>
-              </div>
+              <img src="/logo.png" alt="GitTime" className="w-8 h-8 rounded-lg object-contain" />
               <span className="font-mono text-sm font-semibold tracking-wider text-white/90">GITTIME</span>
               <span className="font-mono text-xs text-white/20 border border-white/10 px-2 py-0.5 rounded-full">v2.0 PRO</span>
             </div>
