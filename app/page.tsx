@@ -271,7 +271,7 @@ function WizardLayout() {
               </svg>
               <span className="relative z-10">Sign in with GitHub →</span>
             </button>
-            <p className="mt-5 font-mono text-[11px] text-white/20 tracking-[0.15em] uppercase">Free forever · No credit card</p>
+            {/* <p className="mt-5 font-mono text-[11px] text-white/20 tracking-[0.15em] uppercase">Free forever · No credit card</p> */}
           </div>
         </main>
 
