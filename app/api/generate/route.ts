@@ -134,6 +134,16 @@ export async function POST(request: NextRequest) {
     const dbUser = await User.findOne({ email: session.user.email })
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+    const activeJob = await Job.findOne({ 
+      userId: session.user.email, 
+      status: { $in: ['pending', 'processing'] } 
+    })
+    if (activeJob) {
+      return NextResponse.json({ 
+        error: 'You already have a repository generation in progress. Please wait for it to finish before starting a new one.' 
+      }, { status: 429 })
+    }
+
     const isPro = dbUser.isPro
     const used = dbUser.freeCommitsUsed || 0
     const requested = Number(totalCommits) || 0

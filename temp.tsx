@@ -794,7 +794,7 @@ export default function Home() {
                 {/* Top and Bottom Fade Gradients */}
                 <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-[#050508] to-transparent z-10 pointer-events-none" />
                 <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#050508] to-transparent z-10 pointer-events-none" />
-                
+
                 <div className="animate-marquee-up space-y-1.5 whitespace-nowrap opacity-90 pb-2">
                   <p className="text-white/40">&gt; Authenticating GitHub scopes...</p>
                   <p className="text-white/80">Γ£ô Token verified. User: "Senior Dev"</p>

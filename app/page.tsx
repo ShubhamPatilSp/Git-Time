@@ -544,7 +544,7 @@ function WizardLayout() {
               <img src="/logo.png" alt="GitTime" className="w-6 h-6 rounded-lg object-contain" />
               <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
             </div>
-            <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p>
+            {/* <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p> */}
           </div>
         </footer>
       </div>
