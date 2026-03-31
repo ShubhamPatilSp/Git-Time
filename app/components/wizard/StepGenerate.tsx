@@ -101,7 +101,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
         // Show upgrade modal if credits are now exhausted
         if (
           (typeof data.runsThisMonth === 'number' && typeof data.maxRuns === 'number' && data.runsThisMonth >= data.maxRuns) ||
-          (typeof data.freeCommitsUsed === 'number' && typeof data.isPro === 'boolean' && !data.isPro && data.freeCommitsUsed >= 100)
+          (typeof data.freeCommitsUsed === 'number' && typeof data.maxCommits === 'number' && data.freeCommitsUsed >= data.maxCommits)
         ) {
           setShowUpgradeModal(true)
         }

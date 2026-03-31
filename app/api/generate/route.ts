@@ -63,10 +63,13 @@ async function processGenerationJob(
       archive.finalize()
     })
 
-    // Increment usage for ALL users (free and pro both have limits)
-    const incQuery = isPro 
-      ? { $inc: { runsThisMonth: 1 } }
-      : { $inc: { runsThisMonth: 1, freeCommitsUsed: result.totalCommits } }
+    // Increment usage for ALL users
+    const incQuery = { 
+      $inc: { 
+        runsThisMonth: 1, 
+        freeCommitsUsed: result.totalCommits 
+      } 
+    }
     
     await User.findOneAndUpdate(
       { email: userEmail },
@@ -178,10 +181,10 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    if (!isPro && used + requested > 100) {
+    if (used + requested > maxCommits) {
       return NextResponse.json({ 
-        error: `Lifetime limit reached. You have used ${used}/100 commit credits. Upgrade to Pro for unlimited commits!`,
-        code: 'PAYMENT_REQUIRED' 
+        error: `Lifetime limit reached. You have used ${used}/${maxCommits} commit credits. ${isPro ? 'Please contact support to increase your Pro limits.' : 'Upgrade to Pro for 2,000 commits!'}`,
+        code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED' 
       }, { status: 402 })
     }
 

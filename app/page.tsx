@@ -30,7 +30,7 @@ function WizardLayout() {
   const maxRuns = (session?.user as any)?.maxRuns || 3
   const maxCommits = (session?.user as any)?.maxCommits || 100
   const freeCommitsUsed = (session?.user as any)?.freeCommitsUsed || 0
-  const creditsExhausted = (!isPro && (freeCommitsUsed + fileCount > 100)) || (runsThisMonth >= maxRuns)
+  const creditsExhausted = (freeCommitsUsed + fileCount > maxCommits) || (runsThisMonth >= maxRuns)
 
   // Fetch geo-based pricing
   useEffect(() => {
