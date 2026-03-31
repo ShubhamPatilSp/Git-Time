@@ -29,10 +29,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch latest credit balance when job is completed
-    let freeCommitsUsed: number | undefined
+    let runsThisMonth = 0
+    let maxRuns = 3
+    let isPro = false
+    let freeCommitsUsed = 0
     if (job.status === 'completed') {
       const dbUser = await User.findOne({ email: session.user.email }).lean() as any
-      freeCommitsUsed = dbUser?.freeCommitsUsed || 0
+      if (dbUser) {
+        isPro = dbUser.plan === 'pro' && dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
+        runsThisMonth = dbUser.runsThisMonth || 0
+        maxRuns = isPro ? 30 : 3
+        freeCommitsUsed = dbUser.freeCommitsUsed || 0
+      }
     }
 
     return NextResponse.json({
@@ -41,6 +49,9 @@ export async function GET(request: NextRequest) {
       message: job.message,
       error: job.error,
       downloadUrl: job.downloadUrl,
+      runsThisMonth,
+      maxRuns,
+      isPro,
       freeCommitsUsed,
       result: job.status === 'completed' ? {
         totalCommits: job.totalCommits,

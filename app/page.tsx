@@ -23,9 +23,19 @@ function WizardLayout() {
   } = useWizard()
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [repoName, setRepoName] = useState('') // For Step 1 effect
+  const [repoName, setRepoName] = useState('')
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [pricing, setPricing] = useState<any>(null)
+  const runsThisMonth = (session?.user as any)?.runsThisMonth || 0
+  const maxRuns = (session?.user as any)?.maxRuns || 3
+  const maxCommits = (session?.user as any)?.maxCommits || 100
   const freeCommitsUsed = (session?.user as any)?.freeCommitsUsed || 0
-  const creditsExhausted = !isPro && (freeCommitsUsed + fileCount > 100)
+  const creditsExhausted = (!isPro && (freeCommitsUsed + fileCount > 100)) || (runsThisMonth >= maxRuns)
+
+  // Fetch geo-based pricing
+  useEffect(() => {
+    fetch('/api/pricing').then(r => r.json()).then(setPricing).catch(() => {})
+  }, [])
 
   // Auto-fill author email from GitHub if available
   useEffect(() => {
@@ -42,22 +52,27 @@ function WizardLayout() {
 
   const handleUpgrade = async () => {
     try {
-      const orderRes = await fetch('/api/razorpay/order', { method: 'POST' })
-      const order = await orderRes.json()
-      if (!orderRes.ok) { alert('Could not initiate payment. Please try again.'); return }
+      const orderRes = await fetch('/api/razorpay/order', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planType: billingCycle }),
+      })
+      const orderData = await orderRes.json()
+      if (!orderRes.ok) { alert(orderData.error || 'Could not initiate payment. Please try again.'); return }
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
+        subscription_id: orderData.subscriptionId,
         name: 'GitTime Pro',
-        description: 'One-Time Lifetime Upgrade',
-        order_id: order.id,
+        description: `${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Subscription`,
         handler: async (response: any) => {
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(response),
+            body: JSON.stringify({
+              ...response,
+              planType: billingCycle,
+            }),
           })
           const verifyData = await verifyRes.json()
           if (verifyData.success) {
@@ -71,7 +86,6 @@ function WizardLayout() {
         theme: { color: '#00ff87' },
       }
 
-      // @ts-ignore - Razorpay is loaded via script tag
       const rzp = new (window as any).Razorpay(options)
       rzp.open()
     } catch (err) {
@@ -82,7 +96,7 @@ function WizardLayout() {
   const canProceed = () => {
     if (step === 1) return authors[0].name.trim() !== '' && authors[0].email.trim() !== ''
     if (step === 2) return sessionId !== null
-    if (step === 3) return startDate && endDate && new Date(startDate) < new Date(endDate)
+    if (step === 3) return startDate && endDate && new Date(startDate) < new Date(endDate) && fileCount <= maxCommits
     if (step === 4) return true // Branch name handles internally or defaulting
     return false
   }
@@ -104,32 +118,72 @@ function WizardLayout() {
         <div className="relative p-8">
           <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">✕</button>
 
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono text-[#00ff87] border border-[#00ff87]/20 bg-[#00ff87]/5 mb-4">✦ One-Time Lifetime Upgrade</div>
-            <h2 className="text-3xl font-black text-white mb-2">Unlock <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">GitTime Pro</span></h2>
-            <p className="text-white/40 text-sm">Pay once. Unlock everything. Forever.</p>
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-black text-white mb-2">
+              {creditsExhausted ? (
+                <>You've hit your <span className="text-red-400">free limit!</span> 🚦</>
+              ) : (
+                <>Unlock <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">GitTime Pro</span></>
+              )}
+            </h2>
+            <p className="text-white/40 text-sm">
+              {creditsExhausted 
+                ? 'Upgrade to Pro to generate 2,000 commits per repo, 30 runs a month, and unlock the Gemini AI Engine.'
+                : 'More power. More commits. More realism.'}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <button 
+              onClick={() => setBillingCycle('monthly')}
+              className={`font-mono text-xs px-4 py-2 rounded-xl transition-all ${billingCycle === 'monthly' ? 'bg-white/10 text-white border border-white/20' : 'text-white/30 hover:text-white/50'}`}
+            >Monthly</button>
+            <button 
+              onClick={() => setBillingCycle('yearly')}
+              className={`font-mono text-xs px-4 py-2 rounded-xl transition-all relative ${billingCycle === 'yearly' ? 'bg-[#00ff87]/10 text-[#00ff87] border border-[#00ff87]/30' : 'text-white/30 hover:text-white/50'}`}
+            >
+              Annual
+              <span className="absolute -top-2 -right-3 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#00ff87] text-black">-35%</span>
+            </button>
+          </div>
+
+          {/* Price Display */}
+          <div className="text-center mb-6">
+            <div className="text-5xl font-black text-white">
+              {pricing ? (
+                billingCycle === 'monthly' ? pricing.monthly.display : pricing.annual.display
+              ) : (
+                billingCycle === 'monthly' ? '₹399' : '₹2,999'
+              )}
+            </div>
+            <p className="font-mono text-xs text-white/30 mt-1">
+              {billingCycle === 'monthly' ? 'per month' : 'per year'}
+              {billingCycle === 'yearly' && <span className="text-[#00ff87]/60 ml-2">Save {pricing?.tier === 'tier1' ? '$41' : '₹1,789'}/yr</span>}
+            </p>
+          </div>
+
+          {/* Feature Comparison */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-2xl border border-white/5 bg-white/2">
-              <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-4">Free</p>
-              <div className="space-y-2.5 text-sm">
-                {['Basic commit messages', '100 total commits', 'Direct GitHub Push'].map(f => (
+              <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-3">Free</p>
+              <div className="space-y-2 text-sm">
+                {['100 commits/gen', '3 runs/month', '10 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/40"><span className="text-white/20">–</span>{f}</div>
                 ))}
-                {['Fake PRs & Branches', 'File Density Control', 'AI Engine (Gemini)'].map(f => (
+                {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/20 line-through"><span>✕</span>{f}</div>
                 ))}
               </div>
             </div>
             <div className="p-4 rounded-2xl border border-[#00ff87]/20 bg-[#00ff87]/5 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold bg-gradient-to-r from-[#00ff87] to-[#00d4ff] text-[#050508]">PRO</div>
-              <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-4">Pro</p>
-              <div className="space-y-2.5 text-sm">
-                {['Realistic AI messages', 'Unlimited commits', 'Unlimited runs'].map(f => (
+              <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-3">Pro</p>
+              <div className="space-y-2 text-sm">
+                {['2,000 commits/gen', '30 runs/month', '150 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
-                {['Fake PRs & Branches', 'File Density Control', 'AI Engine (your key)'].map(f => (
+                {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
               </div>
@@ -138,9 +192,15 @@ function WizardLayout() {
 
           <button onClick={handleUpgrade} className="group relative overflow-hidden w-full py-4 rounded-2xl font-mono text-lg font-bold text-[#050508] bg-gradient-to-r from-[#00ff87] to-[#00d4ff] hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_40px_rgba(0,255,135,0.25)]">
             <div className="btn-shine-overlay" />
-            <span className="relative z-10">Pay ₹399 — Upgrade to Pro →</span>
+            <span className="relative z-10">
+              {pricing ? (
+                billingCycle === 'monthly' ? `Subscribe ${pricing.monthly.display}/mo →` : `Subscribe ${pricing.annual.display}/yr →`
+              ) : (
+                billingCycle === 'monthly' ? 'Subscribe ₹399/mo →' : 'Subscribe ₹2,999/yr →'
+              )}
+            </span>
           </button>
-          <p className="text-center font-mono text-xs text-white/20 mt-3">UPI · Cards · NetBanking · Wallets · Powered by Razorpay</p>
+          <p className="text-center font-mono text-xs text-white/20 mt-3">Cancel anytime · UPI · Cards · NetBanking · Powered by Razorpay</p>
         </div>
       </div>
     </div>
@@ -573,10 +633,10 @@ function WizardLayout() {
               <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-slow shadow-[0_0_8px_#00ff87]" />
               {!isPro && (
                 <button onClick={() => setShowUpgradeModal(true)} className="font-mono text-xs font-bold px-3 py-1.5 rounded-lg border border-[#00ff87]/30 text-[#00ff87] bg-[#00ff87]/10 hover:bg-[#00ff87]/20 transition-all animate-pulse-slow">
-                  ⚡ Upgrade to Pro
+                  ⚡ Free ({runsThisMonth}/{maxRuns} runs)
                 </button>
               )}
-              {isPro && <span className="font-mono text-xs text-[#00ff87] border border-[#00ff87]/30 bg-[#00ff87]/10 px-3 py-1.5 rounded-lg">✓ Pro</span>}
+              {isPro && <span className="font-mono text-xs text-[#00ff87] border border-[#00ff87]/30 bg-[#00ff87]/10 px-3 py-1.5 rounded-lg">✓ Pro ({runsThisMonth}/{maxRuns} runs)</span>}
               <button onClick={() => signOut()} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Sign Out</button>
             </div>
           </div>

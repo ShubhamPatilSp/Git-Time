@@ -63,13 +63,15 @@ async function processGenerationJob(
       archive.finalize()
     })
 
-    // Increment usage for free users upon successful generation
-    if (!isPro) {
-      await User.findOneAndUpdate(
-        { email: userEmail },
-        { $inc: { freeCommitsUsed: result.totalCommits, freeRunsUsed: 1 } }
-      )
-    }
+    // Increment usage for ALL users (free and pro both have limits)
+    const incQuery = isPro 
+      ? { $inc: { runsThisMonth: 1 } }
+      : { $inc: { runsThisMonth: 1, freeCommitsUsed: result.totalCommits } }
+    
+    await User.findOneAndUpdate(
+      { email: userEmail },
+      incQuery
+    )
 
     await Job.findOneAndUpdate({ jobId }, { 
       status: 'completed', 
@@ -149,18 +151,48 @@ export async function POST(request: NextRequest) {
       }, { status: 429 })
     }
 
-    const isPro = dbUser.isPro
-    const used = dbUser.freeCommitsUsed || 0
-    const requested = Number(totalCommits) || 0
+    const isPro = dbUser.plan === 'pro' && 
+      dbUser.subscriptionExpiry && 
+      new Date() < new Date(dbUser.subscriptionExpiry)
 
-    // 2. Enforce Free Tier Limits before accepting the job
+    // Reset monthly runs counter if needed
+    const now = new Date()
+    const resetAt = new Date(dbUser.runsResetAt || now)
+    if (now > resetAt) {
+      const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      dbUser.runsThisMonth = 0
+      dbUser.runsResetAt = nextReset
+      await dbUser.save()
+    }
+
+    const maxRuns = isPro ? 30 : 3
+    const maxCommits = isPro ? 2000 : 100
+    const requested = Number(totalCommits) || 0
+    const used = dbUser.freeCommitsUsed || 0
+
+    // 2. Enforce Plan Limits (applies to BOTH free and pro)
+    if (dbUser.runsThisMonth >= maxRuns) {
+      return NextResponse.json({ 
+        error: `Monthly limit reached. You've used ${dbUser.runsThisMonth}/${maxRuns} generations this month.${isPro ? ' Your limit resets on the 1st.' : ' Upgrade to Pro for 30 generations/month!'}`,
+        code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED' 
+      }, { status: 402 })
+    }
+
+    if (!isPro && used + requested > 100) {
+      return NextResponse.json({ 
+        error: `Lifetime limit reached. You have used ${used}/100 commit credits. Upgrade to Pro for unlimited commits!`,
+        code: 'PAYMENT_REQUIRED' 
+      }, { status: 402 })
+    }
+
+    if (requested > maxCommits) {
+      return NextResponse.json({ 
+        error: `Maximum ${maxCommits} commits per generation${isPro ? '' : '. Upgrade to Pro for 2,000 commits per generation!'}`,
+        code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED'
+      }, { status: 402 })
+    }
+
     if (!isPro) {
-      if (used + requested > 100) {
-        return NextResponse.json({ 
-          error: `Limit exceeded. You have used ${used}/100 commit credits. Please upgrade to Pro for unlimited access!`,
-          code: 'PAYMENT_REQUIRED' 
-        }, { status: 402 })
-      }
       if (useAI || injectPRMerges || (fileTypeDensity && Object.keys(fileTypeDensity).length > 0)) {
         return NextResponse.json({ error: 'Pro feature detected. Please upgrade to unlock.' }, { status: 403 })
       }

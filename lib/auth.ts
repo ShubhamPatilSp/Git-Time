@@ -43,14 +43,43 @@ export const authOptions: NextAuthOptions = {
       if (session.user?.email) {
         try {
           await connectToDatabase();
-          const dbUser = await User.findOne({ email: session.user.email }).lean();
+          const dbUser = await User.findOne({ email: session.user.email });
           if (dbUser) {
+            // Reset runs counter if we've crossed into a new month
+            const now = new Date();
+            const resetAt = new Date(dbUser.runsResetAt || now);
+            if (now > resetAt) {
+              const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+              dbUser.runsThisMonth = 0;
+              dbUser.runsResetAt = nextReset;
+              await dbUser.save();
+            }
+
+            // Compute active Pro status from subscription expiry
+            const isActivePro = dbUser.plan === 'pro' && 
+              dbUser.subscriptionExpiry && 
+              new Date() < new Date(dbUser.subscriptionExpiry);
+
             // @ts-ignore
-            session.user.isPro = dbUser.isPro;
+            session.user.isPro = isActivePro;
+            // @ts-ignore
+            session.user.plan = dbUser.plan || 'free';
+            // @ts-ignore
+            session.user.planType = dbUser.planType || 'none';
+            // @ts-ignore
+            session.user.runsThisMonth = dbUser.runsThisMonth || 0;
+            // @ts-ignore
+            session.user.maxRuns = isActivePro ? 30 : 3;
+            // @ts-ignore
+            session.user.maxCommits = isActivePro ? 2000 : 100;
+            // @ts-ignore
+            session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
             // @ts-ignore
             session.user.freeRunsUsed = dbUser.freeRunsUsed;
             // @ts-ignore
             session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
+            // @ts-ignore
+            session.user.subscriptionExpiry = dbUser.subscriptionExpiry?.toISOString() || null;
           }
         } catch (error) {
           console.error("Error fetching user from DB for session:", error);
@@ -61,7 +90,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true, // Enables verbose logs in Render console
+  debug: true,
 };
 
 // Log presence of keys on server startup (not the values themselves)

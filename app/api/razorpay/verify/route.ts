@@ -12,9 +12,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
+    const { 
+      razorpay_payment_id, 
+      razorpay_subscription_id, 
+      razorpay_signature,
+      planType // 'monthly' or 'yearly'
+    } = await req.json();
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    // Verify signature: subscription_id + "|" + payment_id
+    const body = razorpay_subscription_id + "|" + razorpay_payment_id;
 
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "MISSING")
@@ -22,14 +28,33 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      // Payment is authentic. Upgrade user to Pro!
+      // Payment is authentic. Activate subscription!
       await connectToDatabase();
+
+      // Calculate subscription expiry
+      const now = new Date();
+      const expiry = new Date(now);
+      if (planType === 'yearly') {
+        expiry.setFullYear(expiry.getFullYear() + 1);
+      } else {
+        expiry.setMonth(expiry.getMonth() + 1);
+      }
+
       await User.findOneAndUpdate(
         { email: session.user.email },
-        { isPro: true, razorpayOrderId: razorpay_order_id }
+        { 
+          isPro: true, // Keep legacy field in sync
+          plan: 'pro',
+          planType: planType || 'monthly',
+          subscriptionId: razorpay_subscription_id,
+          subscriptionExpiry: expiry,
+          // Reset runs counter on upgrade
+          runsThisMonth: 0,
+          runsResetAt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        }
       );
 
-      return NextResponse.json({ success: true, message: "Payment verified successfully" });
+      return NextResponse.json({ success: true, message: "Subscription activated successfully" });
     } else {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }

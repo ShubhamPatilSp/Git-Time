@@ -6,6 +6,7 @@ import { useWizard, PATTERNS, PatternName, toDateInputValue } from "./WizardCont
 export function StepTimeline() {
   const { data: session } = useSession() as any
   const isPro = !!session?.user?.isPro
+  const maxCommits = session?.user?.maxCommits || 100
   const { startDate, setStartDate, endDate, setEndDate, pattern, setPattern, weekdaysOnly, setWeekdaysOnly, fileCount } = useWizard()
 
   const dayCount = Math.max(0, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
@@ -37,22 +38,40 @@ export function StepTimeline() {
           <span className="font-mono text-xs text-white/40">{dayCount} days · ~{fileCount} commits total</span>
           <span className="font-mono text-xs text-brand-green">{fileCount > 0 ? `≈${Math.ceil(fileCount / Math.max(dayCount, 1))} commits/day` : ''}</span>
         </div>
-        {!isPro && (
+        {!isPro ? (
           <div className="mt-1 pt-2 border-t border-white/5">
             <div className="flex justify-between font-mono text-xs mb-1.5">
               <span className="text-white/40">Free Quota Used</span>
-              <span className={(session?.user?.freeCommitsUsed + fileCount) > 100 ? "text-brand-red font-bold" : "text-white/70"}>
+              <span className={((session?.user?.freeCommitsUsed || 0) + fileCount) > 100 ? "text-brand-red font-bold" : "text-white/70"}>
                 {(session?.user?.freeCommitsUsed || 0) + fileCount} / 100 commits
               </span>
             </div>
             <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all ${(session?.user?.freeCommitsUsed + fileCount) > 100 ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
-                style={{ width: `${Math.min((( (session?.user?.freeCommitsUsed || 0) + fileCount) / 100) * 100, 100)}%` }} 
+                className={`h-full rounded-full transition-all ${((session?.user?.freeCommitsUsed || 0) + fileCount) > 100 ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
+                style={{ width: `${Math.min((((session?.user?.freeCommitsUsed || 0) + fileCount) / 100) * 100, 100)}%` }} 
               />
             </div>
-            {(session?.user?.freeCommitsUsed + fileCount) > 100 && (
+            {((session?.user?.freeCommitsUsed || 0) + fileCount) > 100 && (
                <p className="font-mono text-[10px] text-brand-red mt-1.5">Total lifetime limit reached! Upgrade to Pro for unlimited commits.</p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-1 pt-2 border-t border-white/5">
+            <div className="flex justify-between font-mono text-xs mb-1.5">
+              <span className="text-white/40">Commits needed</span>
+              <span className={fileCount > maxCommits ? "text-brand-red font-bold" : "text-white/70"}>
+                {fileCount} / {maxCommits} max
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all ${fileCount > maxCommits ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
+                style={{ width: `${Math.min((fileCount / maxCommits) * 100, 100)}%` }} 
+              />
+            </div>
+            {fileCount > maxCommits && (
+               <p className="font-mono text-[10px] text-brand-red mt-1.5">Exceeds {maxCommits} commit limit per generation! Reduce the duration.</p>
             )}
           </div>
         )}
