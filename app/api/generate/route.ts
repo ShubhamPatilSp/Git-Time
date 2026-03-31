@@ -98,6 +98,11 @@ async function processGenerationJob(
       status: 'failed', 
       error: error?.message || 'Generation failed internally'
     })
+    
+    // Auto-cleanup on failure to prevent disk space leaks
+    try {
+      await fsExtra.remove(extractPath)
+    } catch { /* ok */ }
   }
 }
 
