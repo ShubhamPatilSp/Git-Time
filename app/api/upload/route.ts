@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
+import { createWriteStream } from 'fs'
+import { pipeline } from 'stream/promises'
+import { Readable } from 'stream'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { v4 as uuidv4 } from 'uuid'
@@ -47,8 +49,11 @@ export async function POST(request: NextRequest) {
     await fsExtra.ensureDir(sessionDir)
     await fsExtra.ensureDir(extractPath)
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(zipPath, buffer)
+    // Stream file directly to disk to prevent RAM exhaustion on Render
+    await pipeline(
+      Readable.fromWeb(file.stream() as any),
+      createWriteStream(zipPath)
+    )
 
     const zip = new AdmZip(zipPath)
     zip.extractAllTo(extractPath, true)
