@@ -60,8 +60,10 @@ function WizardLayout() {
       const orderData = await orderRes.json()
       if (!orderRes.ok) { alert(orderData.error || 'Could not initiate payment. Please try again.'); return }
 
+      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_SYWYCaOfSpQv4o'
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: rzpKey,
         amount: orderData.amount,
         currency: orderData.currency,
         order_id: orderData.orderId,
@@ -88,12 +90,22 @@ function WizardLayout() {
         },
         prefill: { email: session?.user?.email || '' },
         theme: { color: '#00ff87' },
+        modal: {
+          ondismiss: () => {
+            console.log('Razorpay checkout dismissed by user')
+          }
+        },
       }
 
       const rzp = new (window as any).Razorpay(options)
+      rzp.on('payment.failed', (response: any) => {
+        console.error('Razorpay payment failed:', response.error)
+        alert(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+      })
       rzp.open()
-    } catch (err) {
-      alert('Something went wrong. Please try again.')
+    } catch (err: any) {
+      console.error('Razorpay checkout error:', err)
+      alert(`Something went wrong: ${err?.message || 'Please try again.'}`)
     }
   }
 
