@@ -62,15 +62,19 @@ function WizardLayout() {
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        subscription_id: orderData.subscriptionId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        order_id: orderData.orderId,
         name: 'GitTime Pro',
-        description: `${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Subscription`,
+        description: `${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
         handler: async (response: any) => {
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              ...response,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
               planType: billingCycle,
             }),
           })

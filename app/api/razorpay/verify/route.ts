@@ -12,15 +12,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { 
-      razorpay_payment_id, 
-      razorpay_subscription_id, 
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
       razorpay_signature,
       planType // 'monthly' or 'yearly'
     } = await req.json();
 
-    // Verify signature: subscription_id + "|" + payment_id
-    const body = razorpay_subscription_id + "|" + razorpay_payment_id;
+    // Verify signature: order_id + "|" + payment_id
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
 
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "MISSING")
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      // Payment is authentic. Activate subscription!
+      // Payment is authentic. Activate Pro!
       await connectToDatabase();
 
       // Calculate subscription expiry
@@ -42,11 +42,12 @@ export async function POST(req: Request) {
 
       await User.findOneAndUpdate(
         { email: session.user.email },
-        { 
-          isPro: true, // Keep legacy field in sync
+        {
+          isPro: true,
           plan: 'pro',
           planType: planType || 'monthly',
-          subscriptionId: razorpay_subscription_id,
+          paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
           subscriptionExpiry: expiry,
           // Reset runs counter on upgrade
           runsThisMonth: 0,
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
         }
       );
 
-      return NextResponse.json({ success: true, message: "Subscription activated successfully" });
+      return NextResponse.json({ success: true, message: "Pro activated successfully" });
     } else {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
