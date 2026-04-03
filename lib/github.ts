@@ -48,7 +48,7 @@ export async function pushToGitHub(options: GitHubPushOptions): Promise<GitHubPu
     const { data } = await octokit.rest.repos.createForAuthenticatedUser({
       name: repoName,
       private: isPrivate,
-      description: description || 'Generated with GitTime',
+      description: description || '',
       auto_init: false,
     })
     repoData = data
