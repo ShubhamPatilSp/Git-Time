@@ -12,6 +12,12 @@ export interface Author {
   email: string
   weight: number
   timezone?: string
+  username?: string
+  avatar?: string
+  isVerified?: boolean
+  coAuthorToken?: string
+  coAuthorTokenVerified?: boolean
+  coAuthorTokenError?: string
 }
 
 export interface CommitEntry {

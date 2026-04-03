@@ -51,6 +51,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
           excludeFolders: excludeFolders.split(',').map(s => s.trim()).filter(Boolean),
           useAI,
           fileTypeDensity: Object.keys(fileTypeDensity).length > 0 ? fileTypeDensity : undefined,
+          coAuthorToken: authors.find(a => a.coAuthorToken)?.coAuthorToken || undefined,
         }),
       })
 
@@ -133,7 +134,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
           repoName,
           isPrivate: isPrivateRepo,
           branchName: branchName || 'main',
-          description: 'Generated with GitTime',
+          description: '',
         }),
       })
       const data = await res.json()

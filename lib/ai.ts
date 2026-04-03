@@ -2,35 +2,19 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import fsExtra from 'fs-extra';
 
 let cachedAi: GoogleGenerativeAI | null = null;
+let currentKeyIndex = 0;
 
 export async function generateBatchedMessages(
   files: { filePath: string; absolutePath: string }[],
   authorStyle: string
 ): Promise<{ file: string; message: string }[]> {
   try {
-    if (!process.env.GEMINI_API_KEY) return [];
-
-    if (!cachedAi) {
-      cachedAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    }
-
-    const model = cachedAi.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.OBJECT,
-            properties: {
-              file: { type: SchemaType.STRING },
-              message: { type: SchemaType.STRING }
-            },
-            required: ["file", "message"]
-          }
-        }
-      }
-    });
+    const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY;
+    if (!rawKeys) return [];
+    
+    // Support single key or comma-separated keys
+    const apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k);
+    if (apiKeys.length === 0) return [];
 
     const fileSnippets = [];
     for (const f of files) {
@@ -60,11 +44,50 @@ Read the following snippets and return EXACTLY a JSON array matching the require
 ${fileSnippets.join('\n\n')}
 `;
 
-    const result = await model.generateContent(p);
-    const responseText = result.response.text();
-    return JSON.parse(responseText);
+    let lastError = null;
+
+    // Try keys sequentially, starting from the current active key index
+    for (let i = 0; i < apiKeys.length; i++) {
+        // We use modulo to wrap around seamlessly if we hit the end
+        const activeIndex = (currentKeyIndex + i) % apiKeys.length;
+        const currentKey = apiKeys[activeIndex];
+
+        try {
+            const ai = new GoogleGenerativeAI(currentKey);
+            const model = ai.getGenerativeModel({ 
+              model: 'gemini-2.5-flash',
+              generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: SchemaType.ARRAY,
+                  items: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                      file: { type: SchemaType.STRING },
+                      message: { type: SchemaType.STRING }
+                    },
+                    required: ["file", "message"]
+                  }
+                }
+              }
+            });
+
+            const result = await model.generateContent(p);
+            const responseText = result.response.text();
+            
+            // If successful, we update our index so we continue using this good key
+            currentKeyIndex = activeIndex; 
+            return JSON.parse(responseText);
+        } catch (error: any) {
+            console.error(`API Key at index ${activeIndex} failed. Trying next if available. Error:`, error.message);
+            lastError = error;
+            // If it's the last key, it will throw outside the loop
+        }
+    }
+
+    throw lastError; // If all keys fail, throw the last error
   } catch (error) {
-    console.error("AI Batch Generation failed:", error);
+    console.error("AI Batch Generation failed completely:", error);
     return []; // Fail open, so the classic generic string builder kicks in!
   }
 }

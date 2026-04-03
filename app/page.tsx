@@ -23,8 +23,9 @@ function WizardLayout() {
   } = useWizard()
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
+  const [supportFormStatus, setSupportFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [repoName, setRepoName] = useState('')
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [pricing, setPricing] = useState<any>(null)
   const runsThisMonth = (session?.user as any)?.runsThisMonth || 0
   const maxRuns = (session?.user as any)?.maxRuns || 3
@@ -55,7 +56,6 @@ function WizardLayout() {
       const orderRes = await fetch('/api/razorpay/order', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planType: billingCycle }),
       })
       const orderData = await orderRes.json()
       if (!orderRes.ok) { alert(orderData.error || 'Could not initiate payment. Please try again.'); return }
@@ -68,7 +68,7 @@ function WizardLayout() {
         currency: orderData.currency,
         order_id: orderData.orderId,
         name: 'GitTime Pro',
-        description: `${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
+        description: `Pro Monthly Subscription`,
         handler: async (response: any) => {
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
@@ -77,7 +77,7 @@ function WizardLayout() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
-              planType: billingCycle,
+              planType: 'monthly',
             }),
           })
           const verifyData = await verifyRes.json()
@@ -144,38 +144,18 @@ function WizardLayout() {
             </h2>
             <p className="text-white/40 text-sm">
               {creditsExhausted 
-                ? 'Upgrade to Pro to generate 2,000 commits per repo, 30 runs a month, and unlock the Gemini AI Engine.'
+                ? 'Upgrade to Pro to generate 500 commits per repo, 10 runs a month, and unlock the Gemini AI Engine.'
                 : 'More power. More commits. More realism.'}
             </p>
-          </div>
-
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <button 
-              onClick={() => setBillingCycle('monthly')}
-              className={`font-mono text-xs px-4 py-2 rounded-xl transition-all ${billingCycle === 'monthly' ? 'bg-white/10 text-white border border-white/20' : 'text-white/30 hover:text-white/50'}`}
-            >Monthly</button>
-            <button 
-              onClick={() => setBillingCycle('yearly')}
-              className={`font-mono text-xs px-4 py-2 rounded-xl transition-all relative ${billingCycle === 'yearly' ? 'bg-[#00ff87]/10 text-[#00ff87] border border-[#00ff87]/30' : 'text-white/30 hover:text-white/50'}`}
-            >
-              Annual
-              <span className="absolute -top-2 -right-3 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#00ff87] text-black">-35%</span>
-            </button>
           </div>
 
           {/* Price Display */}
           <div className="text-center mb-6">
             <div className="text-5xl font-black text-white">
-              {pricing ? (
-                billingCycle === 'monthly' ? pricing.monthly.display : pricing.annual.display
-              ) : (
-                billingCycle === 'monthly' ? '₹399' : '₹2,999'
-              )}
+              {pricing ? pricing.monthly.display : '$6.99'}
             </div>
             <p className="font-mono text-xs text-white/30 mt-1">
-              {billingCycle === 'monthly' ? 'per month' : 'per year'}
-              {billingCycle === 'yearly' && <span className="text-[#00ff87]/60 ml-2">Save {pricing?.tier === 'tier1' ? '$41' : '₹1,789'}/yr</span>}
+              per month (cancel anytime)
             </p>
           </div>
 
@@ -184,7 +164,7 @@ function WizardLayout() {
             <div className="p-4 rounded-2xl border border-white/5 bg-white/2">
               <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-3">Free</p>
               <div className="space-y-2 text-sm">
-                {['100 commits/gen', '3 runs/month', '10 MB uploads'].map(f => (
+                {['50 commits/gen', '2 runs/month', '10 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/40"><span className="text-white/20">–</span>{f}</div>
                 ))}
                 {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
@@ -196,7 +176,7 @@ function WizardLayout() {
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold bg-gradient-to-r from-[#00ff87] to-[#00d4ff] text-[#050508]">PRO</div>
               <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-3">Pro</p>
               <div className="space-y-2 text-sm">
-                {['2,000 commits/gen', '30 runs/month', '150 MB uploads'].map(f => (
+                {['500 commits/gen', '10 runs/month', '150 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
                 {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
@@ -209,14 +189,70 @@ function WizardLayout() {
           <button onClick={handleUpgrade} className="group relative overflow-hidden w-full py-4 rounded-2xl font-mono text-lg font-bold text-[#050508] bg-gradient-to-r from-[#00ff87] to-[#00d4ff] hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_40px_rgba(0,255,135,0.25)]">
             <div className="btn-shine-overlay" />
             <span className="relative z-10">
-              {pricing ? (
-                billingCycle === 'monthly' ? `Subscribe ${pricing.monthly.display}/mo →` : `Subscribe ${pricing.annual.display}/yr →`
-              ) : (
-                billingCycle === 'monthly' ? 'Subscribe ₹399/mo →' : 'Subscribe ₹2,999/yr →'
-              )}
+              {pricing ? `Subscribe ${pricing.monthly.display}/mo →` : 'Subscribe $6.99/mo →'}
             </span>
           </button>
           <p className="text-center font-mono text-xs text-white/20 mt-3">Cancel anytime · UPI · Cards · NetBanking · Powered by Razorpay</p>
+        </div>
+      </div>
+    </div>
+  )
+
+  const handleSupportSubmit = async (e: any) => {
+    e.preventDefault()
+    setSupportFormStatus('loading')
+    const formData = new FormData(e.target)
+    formData.append("access_key", "e8faac32-eb2b-4d05-8b2b-e9ba18769dd8")
+
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSupportFormStatus('success')
+        e.target.reset()
+        setTimeout(() => { setShowSupportModal(false); setSupportFormStatus('idle') }, 3000)
+      } else {
+        setSupportFormStatus('error')
+      }
+    } catch {
+      setSupportFormStatus('error')
+    }
+  }
+
+  const renderSupportModal = () => !showSupportModal ? null : (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setShowSupportModal(false)}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f0f17] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#00d4ff]/10 to-transparent rounded-full blur-[60px] pointer-events-none" />
+        <div className="relative p-8">
+          <button onClick={() => setShowSupportModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">✕</button>
+
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Get in touch</h2>
+            <p className="text-white/40 text-[13px]">Need help with GitTime? Send us a message and we'll get back to you shortly.</p>
+          </div>
+
+          <form onSubmit={handleSupportSubmit} className="space-y-4">
+            <input type="hidden" name="subject" value="New Support Request from GitTime" />
+            <input type="hidden" name="from_name" value="GitTime Support Portal" />
+            
+            <div>
+              <label className="block text-[11px] font-mono text-white/30 uppercase tracking-widest mb-1.5">Your Email</label>
+              <input type="email" name="email" required className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00d4ff]/50 transition-colors" placeholder="dev@example.com" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-white/30 uppercase tracking-widest mb-1.5">How can we help?</label>
+              <textarea name="message" required rows={4} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00d4ff]/50 transition-colors resize-none" placeholder="Describe your issue or ask a question..." />
+            </div>
+
+            <button disabled={supportFormStatus === 'loading' || supportFormStatus === 'success'} className="w-full py-3.5 rounded-xl font-mono text-sm font-bold text-[#050508] bg-[#00d4ff] hover:bg-[#00d4ff]/90 transition-colors disabled:opacity-50 tracking-wide">
+              {supportFormStatus === 'loading' ? 'Sending...' : supportFormStatus === 'success' ? 'Message Sent ✓' : 'Send Message'}
+            </button>
+            {supportFormStatus === 'error' && <p className="text-center font-mono text-xs text-red-400 mt-2">Failed to send message. Please try again.</p>}
+          </form>
         </div>
       </div>
     </div>
@@ -302,6 +338,7 @@ function WizardLayout() {
   if (status === "unauthenticated") {
     return (
       <div className="relative min-h-screen bg-[#050508] flex flex-col items-center justify-between overflow-x-hidden selection:bg-brand-green/30 selection:text-brand-green">
+        {renderSupportModal()}
         {/* Background mesh */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute inset-0 dot-grid opacity-60" />
@@ -320,6 +357,7 @@ function WizardLayout() {
           <div className="hidden md:flex items-center gap-8 text-[13px] text-white/40">
             <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors duration-300">Features</a>
             <a href="#how-it-works" onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors duration-300">How it Works</a>
+            <button onClick={() => setShowSupportModal(true)} className="hover:text-white transition-colors duration-300">Support</button>
             <button onClick={() => signIn('github')} className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] text-white text-[13px] font-medium transition-all duration-300">Sign In</button>
           </div>
         </nav>
@@ -593,6 +631,90 @@ function WizardLayout() {
           </div>
         </section>
 
+        {/* ━━━━━━ PRICING ━━━━━━ */}
+        <section id="pricing" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40">
+          <div className="text-center mb-16">
+            <div className="section-label mb-6 mx-auto w-fit">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87]" />
+              Pricing
+            </div>
+            <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-5 leading-tight">
+              Simple, transparent pricing
+            </h2>
+            <p className="text-lg text-white/40 max-w-xl mx-auto leading-relaxed font-light">
+              Free for casual use. A no-brainer upgrade for power users.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Tier */}
+            <div className="premium-card p-8 rounded-[32px] flex flex-col justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-2">Open Source</h3>
+                <p className="text-white/40 text-[15px] mb-8">Perfect for a quick touch-up.</p>
+                <div className="flex items-baseline gap-2 mb-8">
+                  <span className="text-5xl font-black text-white">Free</span>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {[
+                    { text: '2 generated projects/mo', included: true },
+                    { text: '50 commits per project', included: true },
+                    { text: 'Context-Aware AI Commits', included: false },
+                    { text: 'Fake PRs & Merges', included: false },
+                    { text: 'Commit Density Control', included: false },
+                    { text: 'Automated GitHub Push', included: false },
+                  ].map((feat, i) => (
+                    <div key={i} className={`flex items-center gap-3 ${feat.included ? 'text-white/70' : 'text-white/20 line-through'}`}>
+                      <span className={feat.included ? 'text-white/40' : 'text-white/20'}>{feat.included ? '✓' : '✕'}</span>
+                      <span className="text-[15px]">{feat.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => signIn('github')} className="w-full py-4 rounded-xl font-mono text-sm font-bold text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors">
+                Sign in to start
+              </button>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="relative premium-card p-8 rounded-[32px] flex flex-col justify-between overflow-hidden group/card">
+              <div className="absolute inset-0 border-2 border-[#00ff87]/30 rounded-[32px] pointer-events-none" />
+              <div className="absolute -top-32 -right-32 w-[300px] h-[300px] bg-gradient-to-br from-[#00ff87]/20 to-transparent rounded-full blur-[80px] pointer-events-none group-hover/card:scale-110 transition-transform duration-700" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-bold text-[#00ff87]">Contributor</h3>
+                  <span className="font-mono text-[10px] uppercase tracking-wider bg-[#00ff87]/10 text-[#00ff87] px-3 py-1 rounded-full border border-[#00ff87]/30">Most Popular</span>
+                </div>
+                <p className="text-white/40 text-[15px] mb-8">Unrestricted access to the simulation engine.</p>
+                <div className="flex items-baseline gap-2 mb-8">
+                  <span className="text-5xl font-black text-white">{pricing ? pricing.monthly.display : '$6.99'}</span>
+                  <span className="text-white/30 font-mono text-sm">/ mo</span>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {[
+                    { text: '10 generated projects/mo', included: true },
+                    { text: '500 commits per project', included: true },
+                    { text: 'Context-Aware AI Commits', included: true },
+                    { text: 'Fake PRs & Merges', included: true },
+                    { text: 'Commit Density Control', included: true },
+                    { text: 'Automated GitHub Push', included: true },
+                  ].map((feat, i) => (
+                    <div key={i} className="flex items-center gap-3 text-white/90">
+                      <span className="text-[#00ff87]">✓</span>
+                      <span className="text-[15px]">{feat.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => signIn('github')} className="relative z-10 group/btn overflow-hidden w-full py-4 rounded-xl font-mono text-sm font-bold text-[#050508] bg-gradient-to-r from-[#00ff87] to-[#00d4ff] hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_30px_rgba(0,255,135,0.2)]">
+                <div className="btn-shine-overlay" />
+                <span className="relative z-10">Sign in to upgrade →</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* ━━━━━━ SOCIAL PROOF STATS ━━━━━━ */}
         <section className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32">
           <div className="premium-card rounded-[24px] p-12 relative overflow-hidden">
@@ -618,7 +740,10 @@ function WizardLayout() {
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="GitTime" className="w-6 h-6 rounded-lg object-contain" />
-              <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
+              <div className="flex items-center gap-6">
+                <button onClick={() => setShowSupportModal(true)} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Support</button>
+                <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
+              </div>
             </div>
             {/* <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p> */}
           </div>
@@ -631,6 +756,7 @@ function WizardLayout() {
     <div className="relative min-h-screen flex flex-col">
       <script src="https://checkout.razorpay.com/v1/checkout.js" async />
       {renderUpgradeModal()}
+      {renderSupportModal()}
 
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[30%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(0,255,135,0.05) 0%, transparent 70%)' }} />
@@ -653,6 +779,7 @@ function WizardLayout() {
                 </button>
               )}
               {isPro && <span className="font-mono text-xs text-[#00ff87] border border-[#00ff87]/30 bg-[#00ff87]/10 px-3 py-1.5 rounded-lg">✓ Pro ({runsThisMonth}/{maxRuns} runs)</span>}
+              <button onClick={() => setShowSupportModal(true)} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Help</button>
               <button onClick={() => signOut()} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Sign Out</button>
             </div>
           </div>

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const planType = body.planType || 'monthly'; // 'monthly' or 'yearly'
+    const planType = 'monthly'; // We only offer monthly pricing now
 
     // Detect geo tier and get pricing
     const country = detectCountry(req.headers);
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const pricing = getPricing(tier);
 
     // Pick the right price based on billing cycle
-    const priceInfo = planType === 'yearly' ? pricing.annual : pricing.monthly;
+    const priceInfo = pricing.monthly;
 
     // Create a Razorpay Order (one-time payment, no Plan IDs needed)
     const order = await razorpay.orders.create({

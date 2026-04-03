@@ -46,12 +46,12 @@ UserSchema.methods.isActivePro = function (): boolean {
 
 // Helper: Get monthly run limit based on plan
 UserSchema.methods.getMonthlyRunLimit = function (): number {
-  return this.isActivePro() ? 30 : 3;
+  return this.isActivePro() ? 10 : 2;
 };
 
 // Helper: Get per-generation commit limit based on plan
 UserSchema.methods.getCommitLimit = function (): number {
-  return this.isActivePro() ? 2000 : 100;
+  return this.isActivePro() ? 500 : 50;
 };
 
 // Helper: Reset runs counter if we've crossed into a new month

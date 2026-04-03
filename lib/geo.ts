@@ -14,7 +14,6 @@ export interface PricingInfo {
   tier: PricingTier
   country: string
   monthly: { amount: number; currency: string; display: string }
-  annual: { amount: number; currency: string; display: string }
 }
 
 export function detectCountry(headers: Headers): string {
@@ -39,31 +38,29 @@ export function getPricing(tier: PricingTier): PricingInfo {
     return {
       tier: 'tier1',
       country: '',
-      monthly: { amount: 999, currency: 'USD', display: '$9.99' },
-      annual: { amount: 7900, currency: 'USD', display: '$79.00' },
+      monthly: { amount: 699, currency: 'USD', display: '$6.99' },
     }
   }
   return {
     tier: 'tier2',
     country: '',
-    monthly: { amount: 39900, currency: 'INR', display: '₹399' },
-    annual: { amount: 299900, currency: 'INR', display: '₹2,999' },
+    monthly: { amount: 19900, currency: 'INR', display: '₹199' },
   }
 }
 
 // Plan limits
 export const PLAN_LIMITS = {
   free: {
-    maxCommitsPerGen: 100,
-    maxRunsPerMonth: 3,
+    maxCommitsPerGen: 50,
+    maxRunsPerMonth: 2,
     maxZipSizeMB: 10,
     canUseAI: false,
     canUsePRMerges: false,
     canUseDensity: false,
   },
   pro: {
-    maxCommitsPerGen: 2000,
-    maxRunsPerMonth: 30,
+    maxCommitsPerGen: 500,
+    maxRunsPerMonth: 10,
     maxZipSizeMB: 150,
     canUseAI: true,
     canUsePRMerges: true,

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       if (dbUser) {
         isPro = dbUser.plan === 'pro' && dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
         runsThisMonth = dbUser.runsThisMonth || 0
-        maxRuns = isPro ? 30 : 3
+        maxRuns = typeof dbUser.getMonthlyRunLimit === 'function' ? dbUser.getMonthlyRunLimit() : (isPro ? 10 : 2)
         freeCommitsUsed = dbUser.freeCommitsUsed || 0
       }
     }

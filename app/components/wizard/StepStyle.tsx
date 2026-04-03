@@ -17,7 +17,21 @@ export function StepStyle({ setShowUpgradeModal }: { setShowUpgradeModal: (v: bo
     useAI, setUseAI, 
     fileTypeDensity, setFileTypeDensity 
   } = useWizard()
-  const [densityPreset, setDensityPreset] = useState<string>('default')
+  // Derive initial preset from persisted fileTypeDensity to stay in sync after navigation
+  const [densityPreset, setDensityPreset] = useState<string>(() => {
+    const presets = [
+      { id: 'fullstack', map: { ts: 50, tsx: 30, css: 10, json: 10 } },
+      { id: 'backend', map: { ts: 60, js: 20, json: 15, md: 5 } },
+      { id: 'frontend', map: { tsx: 50, css: 30, ts: 20 } },
+    ]
+    const keys = Object.keys(fileTypeDensity)
+    if (keys.length === 0) return 'default'
+    for (const p of presets) {
+      const pKeys = Object.keys(p.map)
+      if (pKeys.length === keys.length && pKeys.every(k => (p.map as any)[k] === fileTypeDensity[k])) return p.id
+    }
+    return 'custom'
+  })
 
   const calculateRealismScore = () => {
     let score = 20

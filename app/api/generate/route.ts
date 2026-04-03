@@ -10,6 +10,7 @@ import connectToDatabase from "@/lib/db"
 import User from "@/models/User"
 import Job from "@/models/Job"
 import { generateCommits, Author } from '@/lib/generator'
+import { pushToGitHub } from '@/lib/github'
 import { PatternName } from '@/lib/patterns'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -27,7 +28,8 @@ async function processGenerationJob(
   sessionId: string,
   extractPath: string,
   options: any,
-  isPro: boolean
+  isPro: boolean,
+  coAuthorToken?: string
 ) {
   try {
     await connectToDatabase()
@@ -88,6 +90,30 @@ async function processGenerationJob(
       commits: result.commits.slice(0, 100) // Keep the DB document size reasonable
     })
 
+    // Auto-push to co-author's GitHub if token provided
+    if (coAuthorToken) {
+      try {
+        await Job.findOneAndUpdate({ jobId }, { message: 'Pushing to co-author GitHub...' })
+        const repoName = `gittime-${sessionId.slice(0, 8)}`
+        const pushResult = await pushToGitHub({
+          token: coAuthorToken,
+          repoName,
+          repoPath: extractPath,
+          isPrivate: true,
+          branchName: options.branchName || 'main',
+          description: '',
+        })
+        await Job.findOneAndUpdate({ jobId }, {
+          coAuthorRepoUrl: pushResult.repoUrl,
+          message: 'Complete! Co-author repo created ✅',
+        })
+        console.log(`Co-author repo created: ${pushResult.repoUrl}`)
+      } catch (coAuthorErr: any) {
+        console.error('Co-author push failed (non-fatal):', coAuthorErr.message)
+        // Non-fatal — primary generation still succeeded
+      }
+    }
+
     // Auto-cleanup extract path after success
     // Increased to 10 minutes to avoid 404 on Push to GitHub
     setTimeout(async () => {
@@ -132,6 +158,7 @@ export async function POST(request: NextRequest) {
       useAI = false,
       injectPRMerges = false,
       fileTypeDensity,
+      coAuthorToken,
     } = body
 
     // 1. Check Authentication & Plan
@@ -168,29 +195,21 @@ export async function POST(request: NextRequest) {
       await dbUser.save()
     }
 
-    const maxRuns = isPro ? 30 : 3
-    const maxCommits = isPro ? 2000 : 100
+    const maxRuns = dbUser.getMonthlyRunLimit ? dbUser.getMonthlyRunLimit() : (isPro ? 10 : 2)
+    const maxCommits = dbUser.getCommitLimit ? dbUser.getCommitLimit() : (isPro ? 500 : 50)
     const requested = Number(totalCommits) || 0
-    const used = dbUser.freeCommitsUsed || 0
 
-    // 2. Enforce Plan Limits (applies to BOTH free and pro)
+    // 2. Enforce Plan Limits
     if (dbUser.runsThisMonth >= maxRuns) {
       return NextResponse.json({ 
-        error: `Monthly limit reached. You've used ${dbUser.runsThisMonth}/${maxRuns} generations this month.${isPro ? ' Your limit resets on the 1st.' : ' Upgrade to Pro for 30 generations/month!'}`,
-        code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED' 
-      }, { status: 402 })
-    }
-
-    if (used + requested > maxCommits) {
-      return NextResponse.json({ 
-        error: `Lifetime limit reached. You have used ${used}/${maxCommits} commit credits. ${isPro ? 'Please contact support to increase your Pro limits.' : 'Upgrade to Pro for 2,000 commits!'}`,
+        error: `Monthly limit reached. You've used ${dbUser.runsThisMonth}/${maxRuns} generations this month.${isPro ? ' Your limit resets on the 1st.' : ' Upgrade to Pro to get 10 generations per month!'}`,
         code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED' 
       }, { status: 402 })
     }
 
     if (requested > maxCommits) {
       return NextResponse.json({ 
-        error: `Maximum ${maxCommits} commits per generation${isPro ? '' : '. Upgrade to Pro for 2,000 commits per generation!'}`,
+        error: `Maximum ${maxCommits} commits per generation.${isPro ? '' : ' Upgrade to Pro for 500 commits per generation!'}`,
         code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED'
       }, { status: 402 })
     }
@@ -229,7 +248,8 @@ export async function POST(request: NextRequest) {
     await Job.create({
       jobId,
       userId: session.user.email,
-      status: 'pending'
+      status: 'pending',
+      coAuthorToken: coAuthorToken || undefined,
     })
 
     const options = {
@@ -254,7 +274,7 @@ export async function POST(request: NextRequest) {
 
     // Spawn async background task (fire and forget)
     // Note: On Vercel this might be suspended if deployed edge, but works reliably locally and on VPS
-    processGenerationJob(jobId, session.user.email, sessionId, extractPath, options, isPro).catch(e => console.error("Unhandled worker error:", e))
+    processGenerationJob(jobId, session.user.email, sessionId, extractPath, options, isPro, coAuthorToken).catch(e => console.error("Unhandled worker error:", e))
 
     return NextResponse.json({ jobId })
   } catch (error: unknown) {

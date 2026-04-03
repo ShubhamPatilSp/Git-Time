@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import Razorpay from "razorpay";
 import connectToDatabase from "@/lib/db";
 import User from "@/models/User";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "MISSING",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "MISSING",
+});
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +34,24 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      // Payment is authentic. Activate Pro!
+      // Payment authentic: Fetch core payment object to verify payment method origin
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      
+      // Stop geo-arbitrage: Block international cards exploiting the VPN ₹199 tier
+      if (payment.currency === 'INR' && payment.international) {
+        console.warn(`[SECURITY] VPN block: Int. card used on INR tier. Payment: ${razorpay_payment_id}`);
+        try {
+          await razorpay.payments.refund(razorpay_payment_id, { speed: 'optimum' });
+        } catch (refundErr) {
+          console.error("Refund failed for abusive card, review dashboard", refundErr);
+        }
+        return NextResponse.json(
+          { error: "Access Denied: International cards cannot be used for the India pricing tier. Please turn off your VPN. Payment has been automatically refunded." }, 
+          { status: 403 }
+        );
+      }
+
+      // Payment is authentic and secure. Activate Pro!
       await connectToDatabase();
 
       // Calculate subscription expiry

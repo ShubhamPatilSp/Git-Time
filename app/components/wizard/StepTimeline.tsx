@@ -40,19 +40,19 @@ export function StepTimeline() {
         </div>
         <div className="mt-1 pt-2 border-t border-white/5">
           <div className="flex justify-between font-mono text-xs mb-1.5">
-            <span className="text-white/40">{isPro ? 'Pro Quota Used' : 'Free Quota Used'}</span>
-            <span className={((session?.user?.freeCommitsUsed || 0) + fileCount) > maxCommits ? "text-brand-red font-bold" : "text-white/70"}>
-              {(session?.user?.freeCommitsUsed || 0) + fileCount} / {maxCommits} commits
+            <span className="text-white/40">{isPro ? 'Pro Run Limit' : 'Free Run Limit'}</span>
+            <span className={fileCount > maxCommits ? "text-brand-red font-bold" : "text-white/70"}>
+              {fileCount} / {maxCommits} commits/gen
             </span>
           </div>
           <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
             <div 
-              className={`h-full rounded-full transition-all ${((session?.user?.freeCommitsUsed || 0) + fileCount) > maxCommits ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
-              style={{ width: `${Math.min((((session?.user?.freeCommitsUsed || 0) + fileCount) / maxCommits) * 100, 100)}%` }} 
+              className={`h-full rounded-full transition-all ${fileCount > maxCommits ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
+              style={{ width: `${Math.min((fileCount / maxCommits) * 100, 100)}%` }} 
             />
           </div>
-          {((session?.user?.freeCommitsUsed || 0) + fileCount) > maxCommits && (
-             <p className="font-mono text-[10px] text-brand-red mt-1.5">{isPro ? `Lifetime limit reached! Please contact support for limit increases.` : `Total lifetime limit reached! Upgrade to Pro for unlimited commits.`}</p>
+          {fileCount > maxCommits && (
+             <p className="font-mono text-[10px] text-brand-red mt-1.5">{isPro ? `Maximum ${maxCommits} commits per generation.` : `Limit reached! Upgrade to Pro for 500 commits.`}</p>
           )}
         </div>
       </div>
