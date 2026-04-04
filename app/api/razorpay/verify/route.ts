@@ -72,8 +72,9 @@ export async function POST(req: Request) {
           subscriptionId: razorpay_payment_id,
           razorpayOrderId: razorpay_order_id,
           subscriptionExpiry: expiry,
-          // Reset runs counter on upgrade
+          // Reset usage counters on upgrade
           runsThisMonth: 0,
+          commitsThisMonth: 0,
           runsResetAt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
         }
       );

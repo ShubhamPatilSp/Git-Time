@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    // No body required for this endpoint
     const planType = 'monthly'; // We only offer monthly pricing now
 
     // Detect geo tier and get pricing
