@@ -69,13 +69,22 @@ export const authOptions: NextAuthOptions = {
             // @ts-ignore
             session.user.runsThisMonth = dbUser.runsThisMonth || 0;
             // @ts-ignore
-            session.user.maxRuns = isActivePro ? 30 : 3;
+            session.user.maxRuns = isActivePro ? 10 : 2;
+            
+            // Calculate remaining pool
+            const poolLimit = isActivePro ? 1000 : 100;
+            const commitsUsedThisMonth = dbUser.commitsThisMonth || 0;
+            const remainingCommits = Math.max(0, poolLimit - commitsUsedThisMonth);
+            
             // @ts-ignore
-            session.user.maxCommits = isActivePro ? 2000 : 100;
+            session.user.maxCommits = remainingCommits;
             // @ts-ignore
-            session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
+            session.user.poolLimit = poolLimit;
             // @ts-ignore
-            session.user.freeRunsUsed = dbUser.freeRunsUsed;
+            session.user.commitsUsedThisMonth = commitsUsedThisMonth;
+            
+            // @ts-ignore
+            session.user.freeRunsUsed = dbUser.freeRunsUsed || 0;
             // @ts-ignore
             session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
             // @ts-ignore
@@ -90,13 +99,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
 };
 
-// Log presence of keys on server startup (not the values themselves)
-console.log("NextAuth Configuration status:", {
-  hasGithubId: !!process.env.GITHUB_ID,
-  hasGithubSecret: !!process.env.GITHUB_SECRET,
-  hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
-  nextAuthUrl: process.env.NEXTAUTH_URL,
-});

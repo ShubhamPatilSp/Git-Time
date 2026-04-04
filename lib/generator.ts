@@ -432,6 +432,18 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
 
       let message = aiMessageMap[relPath]
       if (!message) {
+        // Fallback: search for partial matches (LLMs often append ./ or simplify paths)
+        const matchKey = Object.keys(aiMessageMap).find(k => 
+          k === relPath || k.endsWith(relPath) || relPath.endsWith(k) || k.includes(relPath.split('/').pop() || '')
+        )
+        if (matchKey) {
+          message = aiMessageMap[matchKey]
+          // Remove it so it doesn't get incorrectly reused for another file with same name
+          delete aiMessageMap[matchKey]
+        }
+      }
+
+      if (!message) {
         message = generateMessage({
           filePath: relPath,
           index: commitsDone,

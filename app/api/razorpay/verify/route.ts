@@ -69,8 +69,8 @@ export async function POST(req: Request) {
           isPro: true,
           plan: 'pro',
           planType: planType || 'monthly',
-          paymentId: razorpay_payment_id,
-          orderId: razorpay_order_id,
+          subscriptionId: razorpay_payment_id,
+          razorpayOrderId: razorpay_order_id,
           subscriptionExpiry: expiry,
           // Reset runs counter on upgrade
           runsThisMonth: 0,

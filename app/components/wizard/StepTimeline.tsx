@@ -7,9 +7,10 @@ export function StepTimeline() {
   const { data: session } = useSession() as any
   const isPro = !!session?.user?.isPro
   const maxCommits = session?.user?.maxCommits || 100
-  const { startDate, setStartDate, endDate, setEndDate, pattern, setPattern, weekdaysOnly, setWeekdaysOnly, fileCount } = useWizard()
+  const { startDate, setStartDate, endDate, setEndDate, pattern, setPattern, weekdaysOnly, setWeekdaysOnly, fileCount, totalCommits, setTotalCommits } = useWizard()
 
   const dayCount = Math.max(0, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
+  const effectiveCommits = totalCommits || fileCount
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -33,26 +34,36 @@ export function StepTimeline() {
         </div>
       </div>
 
+      <div>
+        <label className="block font-mono text-xs text-white/40 uppercase tracking-widest mb-2">Target Total Commits <span className="text-white/20 lowercase normal-case ml-1">(Optional)</span></label>
+        <input type="number" 
+          value={totalCommits || ''} 
+          onChange={e => setTotalCommits(e.target.value ? Number(e.target.value) : null)}
+          placeholder={`Auto (based on project size: ~${fileCount} commits)`}
+          max={maxCommits}
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-brand-green/50 transition-colors" />
+      </div>
+
       <div className="flex flex-col gap-2 p-3 rounded-xl border border-white/10 bg-white/5">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-xs text-white/40">{dayCount} days · ~{fileCount} commits total</span>
-          <span className="font-mono text-xs text-brand-green">{fileCount > 0 ? `≈${Math.ceil(fileCount / Math.max(dayCount, 1))} commits/day` : ''}</span>
+          <span className="font-mono text-xs text-white/40">{dayCount} days · ~{effectiveCommits} commits total</span>
+          <span className="font-mono text-xs text-brand-green">{effectiveCommits > 0 ? `≈${Math.ceil(effectiveCommits / Math.max(dayCount, 1))} commits/day` : ''}</span>
         </div>
         <div className="mt-1 pt-2 border-t border-white/5">
           <div className="flex justify-between font-mono text-xs mb-1.5">
-            <span className="text-white/40">{isPro ? 'Pro Run Limit' : 'Free Run Limit'}</span>
-            <span className={fileCount > maxCommits ? "text-brand-red font-bold" : "text-white/70"}>
-              {fileCount} / {maxCommits} commits/gen
+            <span className="text-white/40">{isPro ? 'Pro Monthly Pool' : 'Free Monthly Pool'}</span>
+            <span className={effectiveCommits > maxCommits ? "text-brand-red font-bold" : "text-white/70"}>
+              Using {effectiveCommits} / {maxCommits} remaining
             </span>
           </div>
           <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
             <div 
-              className={`h-full rounded-full transition-all ${fileCount > maxCommits ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
-              style={{ width: `${Math.min((fileCount / maxCommits) * 100, 100)}%` }} 
+              className={`h-full rounded-full transition-all ${effectiveCommits > maxCommits ? 'bg-brand-red' : 'bg-[#00ff87]'}`} 
+              style={{ width: `${Math.min((effectiveCommits / maxCommits) * 100, 100)}%` }} 
             />
           </div>
-          {fileCount > maxCommits && (
-             <p className="font-mono text-[10px] text-brand-red mt-1.5">{isPro ? `Maximum ${maxCommits} commits per generation.` : `Limit reached! Upgrade to Pro for 500 commits.`}</p>
+          {effectiveCommits > maxCommits && (
+             <p className="font-mono text-[10px] text-brand-red mt-1.5">{isPro ? `Insufficient monthly pool balance (Max 1000/mo).` : `Limit reached! Upgrade to Pro for 1000 commits.`}</p>
           )}
         </div>
       </div>

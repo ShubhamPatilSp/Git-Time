@@ -69,6 +69,8 @@ async function processGenerationJob(
     const incQuery = { 
       $inc: { 
         runsThisMonth: 1, 
+        freeRunsUsed: 1,
+        commitsThisMonth: result.totalCommits,
         freeCommitsUsed: result.totalCommits 
       } 
     }
@@ -191,12 +193,15 @@ export async function POST(request: NextRequest) {
     if (now > resetAt) {
       const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1)
       dbUser.runsThisMonth = 0
+      dbUser.commitsThisMonth = 0
       dbUser.runsResetAt = nextReset
       await dbUser.save()
     }
 
     const maxRuns = dbUser.getMonthlyRunLimit ? dbUser.getMonthlyRunLimit() : (isPro ? 10 : 2)
-    const maxCommits = dbUser.getCommitLimit ? dbUser.getCommitLimit() : (isPro ? 500 : 50)
+    const commitPool = dbUser.getCommitLimit ? dbUser.getCommitLimit() : (isPro ? 1000 : 100)
+    const commitsUsedThisMonth = dbUser.commitsThisMonth || 0
+    const remainingCommits = Math.max(0, commitPool - commitsUsedThisMonth)
     const requested = Number(totalCommits) || 0
 
     // 2. Enforce Plan Limits
@@ -207,9 +212,9 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    if (requested > maxCommits) {
+    if (requested > remainingCommits) {
       return NextResponse.json({ 
-        error: `Maximum ${maxCommits} commits per generation.${isPro ? '' : ' Upgrade to Pro for 500 commits per generation!'}`,
+        error: `Insufficient commits in your monthly pool. You requested ${requested}, but only have ${remainingCommits} remaining.`,
         code: isPro ? 'LIMIT_REACHED' : 'PAYMENT_REQUIRED'
       }, { status: 402 })
     }
@@ -249,7 +254,6 @@ export async function POST(request: NextRequest) {
       jobId,
       userId: session.user.email,
       status: 'pending',
-      coAuthorToken: coAuthorToken || undefined,
     })
 
     const options = {

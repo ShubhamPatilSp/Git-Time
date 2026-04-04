@@ -60,7 +60,8 @@ function WizardLayout() {
       const orderData = await orderRes.json()
       if (!orderRes.ok) { alert(orderData.error || 'Could not initiate payment. Please try again.'); return }
 
-      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_SYWYCaOfSpQv4o'
+      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      if (!rzpKey) { alert('Payment configuration error. Contact support.'); return }
 
       const options = {
         key: rzpKey,
@@ -266,7 +267,6 @@ function WizardLayout() {
   ], [])
   const [displayedChars, setDisplayedChars] = useState(0)
   const totalChars = useMemo(() => heroLines.reduce((sum, l) => sum + l.text.length, 0), [heroLines])
-  const typewriterStarted = useRef(false)
 
   useEffect(() => {
     if (status !== 'unauthenticated') return
@@ -366,7 +366,7 @@ function WizardLayout() {
         <main className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-28 pb-36 flex flex-col items-center text-center">
           <div className="section-label mb-8 animate-hero-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] animate-pulse shadow-[0_0_6px_#00ff87]" />
-            <span className="text-[#00ff87]/80">Powered by Gemini 2.5 Flash</span>
+            <span className="text-[#00ff87]/80">Powered by Llama AI</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-[5.5rem] font-extrabold text-white tracking-[-0.04em] leading-[1.1] mb-8 animate-hero-2 min-h-[3.6em]">
@@ -418,7 +418,7 @@ function WizardLayout() {
                   <div className="w-10 h-10 rounded-xl bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-center justify-center">
                     <svg className="w-5 h-5 text-[#00d4ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>
                   </div>
-                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by Gemini 2.5</span>
+                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by Llama AI</span>
                 </div>
 
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight leading-snug">Context-Aware<br />AI Commits</h3>
@@ -426,7 +426,7 @@ function WizardLayout() {
 
                 <div className="font-mono text-[13px] p-5 rounded-2xl bg-[#050508] border border-white/[0.04] relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#00d4ff]/20 to-transparent" />
-                  <p className="text-white/30 mb-2">$ gemini generate-commit --file auth.ts</p>
+                  <p className="text-white/30 mb-2">$ gittime generate-commit --file auth.ts</p>
                   <p className="text-[#00d4ff]"><span className="text-[#00ff87]">✓</span> feat(auth): implement JWT token rotation and secure session cookies</p>
                   <p className="text-[#00d4ff] mt-1"><span className="text-[#00ff87]">✓</span> refactor: extract middleware chain into composable handlers</p>
                 </div>
@@ -563,7 +563,7 @@ function WizardLayout() {
                 <div className="animate-marquee-up space-y-2 whitespace-nowrap opacity-90 pb-2">
                   <p className="text-white/30">&gt; Authenticating GitHub scopes...</p>
                   <p className="text-white/70">✓ Token verified. User: &quot;Senior Dev&quot;</p>
-                  <p className="text-[#00d4ff] mt-3">&gt; Gemini Batch Analyzing 4,120 lines of code...</p>
+                  <p className="text-[#00d4ff] mt-3">&gt; AI Batch Analyzing 4,120 lines of code...</p>
                   <p className="text-white/25">  - src/auth.ts <span className="text-white/15">(AST parsed)</span></p>
                   <p className="text-white/25">  - src/payment.tsx <span className="text-white/15">(AST parsed)</span></p>
                   <p className="text-[#b026ff] mt-3">&gt; Injecting Fake Pull Request #42...</p>
@@ -608,7 +608,7 @@ function WizardLayout() {
 
                 <div className="mt-6 flex items-center justify-between font-mono text-[10px] text-white/30">
                   <span>12 months of contributions</span>
-                  <span className="text-[#00ff87]/60 hover:text-[#00ff87] transition-colors cursor-pointer">Read the Docs →</span>
+                  <span className="text-[#00ff87]/60 font-mono text-[10px]">12 months of contributions</span>
                 </div>
               </div>
 
@@ -658,7 +658,7 @@ function WizardLayout() {
                 <div className="space-y-4 mb-8">
                   {[
                     { text: '2 generated projects/mo', included: true },
-                    { text: '50 commits per project', included: true },
+                    { text: '100 total commits/mo pool', included: true },
                     { text: 'Context-Aware AI Commits', included: false },
                     { text: 'Fake PRs & Merges', included: false },
                     { text: 'Commit Density Control', included: false },
@@ -694,7 +694,7 @@ function WizardLayout() {
                 <div className="space-y-4 mb-8">
                   {[
                     { text: '10 generated projects/mo', included: true },
-                    { text: '500 commits per project', included: true },
+                    { text: '1000 total commits/mo pool', included: true },
                     { text: 'Context-Aware AI Commits', included: true },
                     { text: 'Fake PRs & Merges', included: true },
                     { text: 'Commit Density Control', included: true },

@@ -11,7 +11,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
     progress, setProgress, progressMsg, setProgressMsg, setErrorMsg,
     sessionId, startDate, endDate, authors, pattern, totalCommits, branchName,
     weekdaysOnly, timezone, toggledOffDates, authorStyle, addMergeCommits,
-    injectPRMerges, excludeFolders, useAI, fileTypeDensity, fileCount, setStep, githubToken
+    injectPRMerges, excludeFolders, useAI, fileTypeDensity, fileCount, setStep
   } = useWizard()
   
   const [pushingToGithub, setPushingToGithub] = useState(false)
@@ -130,7 +130,6 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          token: githubToken,
           repoName,
           isPrivate: isPrivateRepo,
           branchName: branchName || 'main',

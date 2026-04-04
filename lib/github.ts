@@ -69,7 +69,11 @@ export async function pushToGitHub(options: GitHubPushOptions): Promise<GitHubPu
     await execAsync(`git remote add origin ${remoteUrl}`, { cwd: repoPath })
     await execAsync(`git branch -M ${branchName}`, { cwd: repoPath })
     await execAsync(`git push -u origin ${branchName} --force`, { cwd: repoPath })
+    // Remove the remote after push to prevent token leaking in .git/config when zipped
+    await execAsync(`git remote remove origin`, { cwd: repoPath }).catch(() => {})
   } catch (err: unknown) {
+    // Clean up remote even on failure to prevent token leak
+    await execAsync(`git remote remove origin`, { cwd: repoPath }).catch(() => {})
     const message = err instanceof Error ? err.message : 'Push failed'
     throw new Error(`Git push failed: ${message}`)
   }

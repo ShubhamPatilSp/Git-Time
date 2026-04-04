@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react'
 export type WizardStep = 1 | 2 | 3 | 4 | 5
 export type Stage = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
 export type AuthorStyle = 'descriptive' | 'terse' | 'conventional'
-export type PatternName = 'active-sprint' | 'side-project' | 'daily-grind' | 'weekend-warrior' | 'crunch-mode' | 'casual'
+export type PatternName = 'active-sprint' | 'side-project' | 'daily-grind' | 'weekend-warrior' | 'crunch-mode' | 'casual' | 'custom'
 
 export interface Author {
   name: string

@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
     let isPro = false
     let freeCommitsUsed = 0
     if (job.status === 'completed') {
-      const dbUser = await User.findOne({ email: session.user.email }).lean() as any
+      const dbUser = await User.findOne({ email: session.user.email })
       if (dbUser) {
-        isPro = dbUser.plan === 'pro' && dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
+        isPro = dbUser.plan === 'pro' && !!dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
         runsThisMonth = dbUser.runsThisMonth || 0
-        maxRuns = typeof dbUser.getMonthlyRunLimit === 'function' ? dbUser.getMonthlyRunLimit() : (isPro ? 10 : 2)
+        maxRuns = isPro ? 10 : 2
         freeCommitsUsed = dbUser.freeCommitsUsed || 0
       }
     }

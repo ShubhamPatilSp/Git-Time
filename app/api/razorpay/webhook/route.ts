@@ -35,14 +35,14 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     switch (eventType) {
-      case "subscription.charged": {
-        // Recurring payment succeeded — extend subscription expiry
-        const subscriptionId = payload?.subscription?.entity?.id;
-        const notes = payload?.subscription?.entity?.notes || {};
+      case "order.paid": {
+        // One-time payment succeeded — extend subscription expiry
+        const orderId = payload?.order?.entity?.id;
+        const notes = payload?.order?.entity?.notes || {};
         const email = notes.email;
         const planType = notes.planType || "monthly";
 
-        if (email && subscriptionId) {
+        if (email && orderId) {
           const now = new Date();
           const expiry = new Date(now);
           if (planType === "yearly") {
@@ -51,54 +51,30 @@ export async function POST(req: NextRequest) {
             expiry.setMonth(expiry.getMonth() + 1);
           }
 
-          await User.findOneAndUpdate(
-            { email },
-            {
-              isPro: true,
-              plan: "pro",
-              subscriptionExpiry: expiry,
-              // Reset monthly runs on renewal
-              runsThisMonth: 0,
-              runsResetAt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-            }
-          );
-          console.log(`[Webhook] subscription.charged — extended ${email} to ${expiry.toISOString()}`);
-        }
-        break;
-      }
-
-      case "subscription.cancelled": {
-        // User cancelled — they keep access until current period ends
-        const subscriptionId = payload?.subscription?.entity?.id;
-        const notes = payload?.subscription?.entity?.notes || {};
-        const email = notes.email;
-
-        if (email) {
-          // Don't immediately downgrade — the subscriptionExpiry field
-          // will naturally handle access cutoff
-          console.log(`[Webhook] subscription.cancelled — ${email} will expire at their current period end`);
-        }
-        break;
-      }
-
-      case "subscription.halted": {
-        // Payment failed repeatedly — immediately downgrade
-        const subscriptionId = payload?.subscription?.entity?.id;
-        const notes = payload?.subscription?.entity?.notes || {};
-        const email = notes.email;
-
-        if (email) {
-          await User.findOneAndUpdate(
-            { email },
-            {
-              isPro: false,
-              plan: "free",
-              planType: "none",
-              subscriptionId: null,
-              subscriptionExpiry: null,
-            }
-          );
-          console.log(`[Webhook] subscription.halted — downgraded ${email} to free`);
+          // We check if the user is already pro with a future expiry and extend from there,
+          // otherwise extend from now. Note: verify/route.ts usually handles this synchronously,
+          // so we use findOneAndUpdate to ensure we don't accidentally shorten their expiry.
+          const user = await User.findOne({ email });
+          if (user) {
+             const currentExpiry = user.subscriptionExpiry?.getTime() || 0;
+             // Only update if the webhook order is newer/equivalent to what we already verified
+             if (!user.subscriptionExpiry || currentExpiry < expiry.getTime() - 86400000) {
+                await User.findOneAndUpdate(
+                  { email },
+                  {
+                    isPro: true,
+                    plan: "pro",
+                    planType,
+                    subscriptionExpiry: expiry,
+                    runsThisMonth: 0,
+                    runsResetAt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+                  }
+                );
+                console.log(`[Webhook] order.paid — granted/extended ${email} to ${expiry.toISOString()}`);
+             } else {
+                console.log(`[Webhook] order.paid — ${email} already verified synchronously`);
+             }
+          }
         }
         break;
       }

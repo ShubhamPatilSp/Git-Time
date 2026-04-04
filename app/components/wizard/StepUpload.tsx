@@ -20,8 +20,13 @@ export function StepUpload() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false)
-    const f = e.dataTransfer.files[0]; if (f) validateAndSetFile(f)
-  }, [setErrorMsg, setFile, setSessionId])
+    const f = e.dataTransfer.files[0]; 
+    if (f) {
+      if (!f.name.endsWith('.zip')) { setErrorMsg('Only .zip files accepted'); return }
+      if (f.size > maxSizeMB * 1024 * 1024) { setErrorMsg(`Max ${maxSizeMB}MB for your plan.${!isPro ? ' Upgrade to Pro for 150MB!' : ''}`); return }
+      setFile(f); setErrorMsg(''); setSessionId(null)
+    }
+  }, [setErrorMsg, setFile, setSessionId, maxSizeMB, isPro])
 
   return (
     <div className="space-y-5 animate-fadeIn">

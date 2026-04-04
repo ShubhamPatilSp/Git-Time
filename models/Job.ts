@@ -32,7 +32,6 @@ const JobSchema: Schema = new Schema({
   commits: { type: Schema.Types.Mixed, default: [] },
   downloadUrl: { type: String },
   error: { type: String },
-  coAuthorToken: { type: String },
   coAuthorRepoUrl: { type: String },
 }, { 
   timestamps: true 

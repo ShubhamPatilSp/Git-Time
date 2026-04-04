@@ -12,8 +12,8 @@ export interface IUser extends Document {
   pricingTier: 'tier1' | 'tier2';
   // Usage tracking (applies to ALL users, free and pro)
   runsThisMonth: number;
-  runsResetAt: Date;
   freeCommitsUsed: number;
+  commitsThisMonth: number;
   freeRunsUsed: number;
   // Legacy
   razorpayOrderId?: string;
@@ -33,6 +33,7 @@ const UserSchema: Schema = new Schema({
   runsResetAt: { type: Date, default: () => new Date() },
   freeRunsUsed: { type: Number, default: 0 },
   freeCommitsUsed: { type: Number, default: 0 },
+  commitsThisMonth: { type: Number, default: 0 },
   // Legacy
   razorpayOrderId: { type: String },
 });
@@ -49,9 +50,9 @@ UserSchema.methods.getMonthlyRunLimit = function (): number {
   return this.isActivePro() ? 10 : 2;
 };
 
-// Helper: Get per-generation commit limit based on plan
+// Helper: Get global commit limit pool per month based on plan
 UserSchema.methods.getCommitLimit = function (): number {
-  return this.isActivePro() ? 500 : 50;
+  return this.isActivePro() ? 1000 : 100;
 };
 
 // Helper: Reset runs counter if we've crossed into a new month
@@ -62,6 +63,7 @@ UserSchema.methods.resetRunsIfNeeded = async function (): Promise<void> {
     // Set next reset to 1st of next month
     const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     this.runsThisMonth = 0;
+    this.commitsThisMonth = 0;
     this.runsResetAt = nextReset;
     await this.save();
   }
