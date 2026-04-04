@@ -19,6 +19,7 @@ export function HeatmapPreview({ startDate, endDate, pattern, weekdaysOnly, file
     'weekend-warrior': [3, 0, 0, 0, 1, 4, 4],
     'crunch-mode': [2, 4, 5, 6, 5, 4, 3],
     'casual': [0, 1, 0, 1, 1, 0, 1],
+    'custom': [1, 1, 1, 1, 1, 1, 1], // Flat distribution fallback
   }
 
   const weights = DENSITY[pattern] || DENSITY['daily-grind']
