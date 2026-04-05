@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useSession, signIn, signOut } from "next-auth/react"
+import { motion } from 'framer-motion'
 import { WizardProvider, useWizard, STEPS, WizardStep } from './components/wizard/WizardContext'
 import { StepIdentity } from './components/wizard/StepIdentity'
 import { StepUpload } from './components/wizard/StepUpload'
@@ -145,7 +146,7 @@ function WizardLayout() {
             </h2>
             <p className="text-white/40 text-sm">
               {creditsExhausted 
-                ? 'Upgrade to Pro to generate 500 commits per repo, 10 runs a month, and unlock the Gemini AI Engine.'
+                ? 'Upgrade to Pro to generate 500 commits per repo, 10 runs a month, and unlock the ChatGPT Engine.'
                 : 'More power. More commits. More realism.'}
             </p>
           </div>
@@ -363,21 +364,17 @@ function WizardLayout() {
         </nav>
 
         {/* Hero */}
-        <main className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-28 pb-36 flex flex-col items-center text-center">
+        <motion.main initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-28 pb-36 flex flex-col items-center text-center">
           <div className="section-label mb-8 animate-hero-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] animate-pulse shadow-[0_0_6px_#00ff87]" />
-            <span className="text-[#00ff87]/80">Powered by Llama AI</span>
+            <span className="text-[#00ff87]/80">Powered by ChatGPT</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-[5.5rem] font-extrabold text-white tracking-[-0.04em] leading-[1.1] mb-8 animate-hero-2 min-h-[3.6em]">
             {renderTypewriter()}
           </h1>
 
-          <p className="text-lg md:text-xl text-white/40 mb-14 max-w-2xl leading-relaxed font-light animate-hero-3">
-            Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
-          </p>
-
-          <div className="animate-hero-4 flex flex-col items-center">
+          <div className="animate-hero-3 flex flex-col items-center mt-10 mb-10">
             <button onClick={() => signIn('github')} className="group relative overflow-hidden inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-mono text-[15px] font-semibold text-[#050508] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] shadow-[0_0_30px_rgba(0,255,135,0.25)] hover:shadow-[0_0_50px_rgba(0,255,135,0.4)] bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">
               <div className="btn-shine-overlay" />
               <svg className="relative z-10 w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -385,12 +382,15 @@ function WizardLayout() {
               </svg>
               <span className="relative z-10">Sign in with GitHub →</span>
             </button>
-            {/* <p className="mt-5 font-mono text-[11px] text-white/20 tracking-[0.15em] uppercase">Free forever · No credit card</p> */}
+            
+            <p className="mt-8 text-lg md:text-xl text-white/40 max-w-2xl leading-relaxed font-light animate-hero-4">
+              Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
+            </p>
           </div>
-        </main>
+        </motion.main>
 
         {/* ━━━━━━ BENTO BOX FEATURE GRID ━━━━━━ */}
-        <section id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-8">
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-8">
           {/* Section header */}
           <div className="text-center mb-20 animate-hero-5">
             <div className="section-label mb-6 mx-auto w-fit">
@@ -418,7 +418,7 @@ function WizardLayout() {
                   <div className="w-10 h-10 rounded-xl bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-center justify-center">
                     <svg className="w-5 h-5 text-[#00d4ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>
                   </div>
-                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by Llama AI</span>
+                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by ChatGPT</span>
                 </div>
 
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight leading-snug">Context-Aware<br />AI Commits</h3>
@@ -523,11 +523,11 @@ function WizardLayout() {
             </div>
 
           </div>
-        </section>
+        </motion.section>
 
 
         {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
-        <section id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-20">
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-20">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
           <div className="text-center mb-20">
@@ -629,10 +629,10 @@ function WizardLayout() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ━━━━━━ PRICING ━━━━━━ */}
-        <section id="pricing" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40">
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="pricing" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40">
           <div className="text-center mb-16">
             <div className="section-label mb-6 mx-auto w-fit">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87]" />
@@ -713,7 +713,7 @@ function WizardLayout() {
               </button>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ━━━━━━ SOCIAL PROOF STATS ━━━━━━ */}
         <section className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32">
@@ -745,7 +745,7 @@ function WizardLayout() {
                 <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
               </div>
             </div>
-            {/* <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p> */}
+            {/* <p className="font-mono text-[11px] text-white/15">Built with Next.js & ChatGPT</p> */}
           </div>
         </footer>
       </div>

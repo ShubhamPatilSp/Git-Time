@@ -1,0 +1,16 @@
+=======================================================
+RESULTS
+=======================================================
+Target date (2 months ago): 2026-02-03T15:56:02.374Z
+Current time:               2026-04-04T15:56:16.934Z
+
+created_at:  2026-04-04T15:56:03Z
+pushed_at:   2026-04-04T15:56:08Z
+updated_at:  2026-04-04T15:56:11Z
+
+diffFromTarget (minutes): 86400
+diffFromNow (minutes):    0
+
+FAILED: pushed_at is set to NOW (current time)
+Even the Git Data API updates pushed_at to the server time
+FALLBACK: Making repos private is the guaranteed solution.

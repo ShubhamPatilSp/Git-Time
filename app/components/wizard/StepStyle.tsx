@@ -160,7 +160,7 @@ export function StepStyle({ setShowUpgradeModal }: { setShowUpgradeModal: (v: bo
                       <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/40 text-[8px] font-bold uppercase tracking-widest border border-white/10 flex-shrink-0">🔒 PRO</span>
                     )}
                   </div>
-                  <p className="font-mono text-[10px] text-white/40 italic truncate">Highly realistic Gemini-generated messages</p>
+                  <p className="font-mono text-[10px] text-white/40 italic truncate">Highly realistic ChatGPT-generated messages</p>
                 </div>
                 <div className={`relative rounded-full transition-colors flex-shrink-0 mt-1 ${useAI && isPro ? 'shadow-[0_0_12px_rgba(0,212,255,0.4)]' : ''}`}
                   style={{ width: '40px', height: '22px', background: useAI && isPro ? 'linear-gradient(90deg, #00ff87, #00d4ff)' : 'rgba(255,255,255,0.1)' }}>

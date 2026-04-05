@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@octokit/rest": "^21.0.2",
+    "@studio-freight/lenis": "^1.0.42",
     "adm-zip": "^0.5.14",
     "archiver": "^7.0.1",
     "date-fns": "^3.6.0",
+    "framer-motion": "^12.38.0",
     "fs-extra": "^11.2.0",
     "groq-sdk": "^1.1.2",
     "mongoose": "^9.3.2",
