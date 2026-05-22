@@ -43,14 +43,52 @@ export const authOptions: NextAuthOptions = {
       if (session.user?.email) {
         try {
           await connectToDatabase();
-          const dbUser = await User.findOne({ email: session.user.email }).lean();
+          const dbUser = await User.findOne({ email: session.user.email });
           if (dbUser) {
+            // Reset runs counter if we've crossed into a new month
+            const now = new Date();
+            const resetAt = new Date(dbUser.runsResetAt || now);
+            if (now > resetAt) {
+              const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+              dbUser.runsThisMonth = 0;
+              dbUser.runsResetAt = nextReset;
+              await dbUser.save();
+            }
+
+            // Compute active Pro status from subscription expiry
+            const isActivePro = dbUser.plan === 'pro' && 
+              dbUser.subscriptionExpiry && 
+              new Date() < new Date(dbUser.subscriptionExpiry);
+
             // @ts-ignore
-            session.user.isPro = dbUser.isPro;
+            session.user.isPro = isActivePro;
             // @ts-ignore
-            session.user.freeRunsUsed = dbUser.freeRunsUsed;
+            session.user.plan = dbUser.plan || 'free';
+            // @ts-ignore
+            session.user.planType = dbUser.planType || 'none';
+            // @ts-ignore
+            session.user.runsThisMonth = dbUser.runsThisMonth || 0;
+            // @ts-ignore
+            session.user.maxRuns = isActivePro ? 10 : 2;
+            
+            // Calculate remaining pool
+            const poolLimit = isActivePro ? 1000 : 100;
+            const commitsUsedThisMonth = dbUser.commitsThisMonth || 0;
+            const remainingCommits = Math.max(0, poolLimit - commitsUsedThisMonth);
+            
+            // @ts-ignore
+            session.user.maxCommits = remainingCommits;
+            // @ts-ignore
+            session.user.poolLimit = poolLimit;
+            // @ts-ignore
+            session.user.commitsUsedThisMonth = commitsUsedThisMonth;
+            
+            // @ts-ignore
+            session.user.freeRunsUsed = dbUser.freeRunsUsed || 0;
             // @ts-ignore
             session.user.freeCommitsUsed = dbUser.freeCommitsUsed || 0;
+            // @ts-ignore
+            session.user.subscriptionExpiry = dbUser.subscriptionExpiry?.toISOString() || null;
           }
         } catch (error) {
           console.error("Error fetching user from DB for session:", error);
@@ -61,13 +99,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true, // Enables verbose logs in Render console
+  debug: process.env.NODE_ENV === 'development',
 };
 
-// Log presence of keys on server startup (not the values themselves)
-console.log("NextAuth Configuration status:", {
-  hasGithubId: !!process.env.GITHUB_ID,
-  hasGithubSecret: !!process.env.GITHUB_SECRET,
-  hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
-  nextAuthUrl: process.env.NEXTAUTH_URL,
-});

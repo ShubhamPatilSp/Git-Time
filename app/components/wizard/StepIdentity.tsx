@@ -76,19 +76,101 @@ export function StepIdentity({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
               )}
             </div>
 
-            {i > 0 && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-mono text-xs text-white/30 mb-1.5">Name</label>
-                  <input type="text" value={author.name} placeholder="Alex Rivera"
-                    onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, name: e.target.value } : a))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-cyan/50 transition-colors" />
+            {i > 0 && !author.isVerified && (
+              <div className="space-y-3">
+                <label className="block font-mono text-xs text-white/30">GitHub Username</label>
+                <div className="flex gap-2">
+                  <input type="text" value={author.username || ''} placeholder="e.g. torvalds"
+                    onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, username: e.target.value } : a))}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-cyan/50 transition-colors" />
+                  <button 
+                    onClick={async () => {
+                      if (!author.username) return;
+                      try {
+                        const res = await fetch(`https://api.github.com/users/${author.username}`);
+                        if (!res.ok) throw new Error('User not found');
+                        const data = await res.json();
+                        setAuthors(prev => prev.map((a, idx) => idx === i ? { 
+                          ...a, 
+                          name: data.name || data.login, 
+                          email: `${data.id}+${data.login}@users.noreply.github.com`,
+                          avatar: data.avatar_url,
+                          isVerified: true
+                        } : a));
+                      } catch (err) {
+                        alert('GitHub user not found!');
+                      }
+                    }}
+                    className="px-4 bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 rounded-lg font-mono text-xs shadow-[0_0_10px_rgba(0,255,255,0.2)] hover:bg-brand-cyan/30 transition-colors">
+                    Verify User
+                  </button>
                 </div>
-                <div>
-                  <label className="block font-mono text-xs text-white/30 mb-1.5">Email</label>
-                  <input type="email" value={author.email} placeholder="alex@dev.io"
-                    onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, email: e.target.value } : a))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-brand-cyan/50 transition-colors" />
+              </div>
+            )}
+
+            {i > 0 && author.isVerified && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 bg-[#0a0a0f]/50 p-3 rounded-xl border border-brand-cyan/20">
+                   {author.avatar && <img src={author.avatar} alt="avatar" className="w-10 h-10 rounded-full border border-brand-cyan/30" />}
+                   <div className="flex-1 min-w-0">
+                     <p className="font-mono text-sm font-semibold text-brand-cyan truncate">{author.name} <span className="text-[10px] text-white/30 uppercase tracking-widest ml-2">Verified</span></p>
+                     <p className="font-mono text-xs text-white/40 truncate">{author.email}</p>
+                   </div>
+                   <button onClick={() => setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, isVerified: false, username: '', coAuthorSessionKey: undefined } : a))} 
+                     className="text-[10px] py-1 px-2 uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/20 rounded hover:bg-red-500/20 font-mono transition-colors">
+                     Change
+                   </button>
+                </div>
+
+                {/* PAT Token Input for Auto-Push */}
+                <div className="space-y-2 mt-4 bg-black/20 p-3 rounded-xl border border-brand-green/20">
+                  <div className="flex justify-between items-center">
+                    <p className="font-mono text-[10px] text-brand-green uppercase tracking-widest">Auto-Push to Co-Author</p>
+                    {author.coAuthorTokenVerified && <span className="text-[10px] bg-brand-green/20 text-brand-green px-2 py-0.5 rounded uppercase tracking-widest">Verified</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="Paste their GitHub PAT (repo scope)"
+                      value={author.coAuthorToken || ''}
+                      onChange={e => setAuthors(prev => prev.map((a, idx) => idx === i ? { 
+                        ...a, 
+                        coAuthorToken: e.target.value, 
+                        coAuthorTokenVerified: false,
+                        coAuthorTokenError: undefined 
+                      } : a))}
+                      className={`flex-1 min-w-0 bg-white/5 border ${author.coAuthorTokenError ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand-green/50 placeholder:text-white/20 transition-colors`}
+                    />
+                    <button
+                      disabled={!author.coAuthorToken || author.coAuthorTokenVerified}
+                      onClick={async () => {
+                        // Clear previous error
+                        setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, coAuthorTokenError: undefined } : a));
+                        
+                        try {
+                          const res = await fetch('/api/github/validate-token', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: author.coAuthorToken }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Token verification failed');
+                          
+                          setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, coAuthorTokenVerified: true, coAuthorTokenError: undefined } : a));
+                        } catch (err: any) {
+                          setAuthors(prev => prev.map((a, idx) => idx === i ? { ...a, coAuthorTokenError: err.message, coAuthorTokenVerified: false } : a));
+                        }
+                      }}
+                      className="px-3 bg-brand-green/10 text-brand-green border border-brand-green/30 rounded-lg font-mono text-[10px] uppercase tracking-widest hover:bg-brand-green/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                  {author.coAuthorTokenError && (
+                    <p className="font-mono text-[10px] text-red-400 mt-1.5 ml-1">
+                      ❌ {author.coAuthorTokenError}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

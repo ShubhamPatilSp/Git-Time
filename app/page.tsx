@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useSession, signIn, signOut } from "next-auth/react"
+import { motion } from 'framer-motion'
 import { WizardProvider, useWizard, STEPS, WizardStep } from './components/wizard/WizardContext'
 import { StepIdentity } from './components/wizard/StepIdentity'
 import { StepUpload } from './components/wizard/StepUpload'
@@ -23,9 +24,20 @@ function WizardLayout() {
   } = useWizard()
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [repoName, setRepoName] = useState('') // For Step 1 effect
+  const [showSupportModal, setShowSupportModal] = useState(false)
+  const [supportFormStatus, setSupportFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [repoName, setRepoName] = useState('')
+  const [pricing, setPricing] = useState<any>(null)
+  const runsThisMonth = (session?.user as any)?.runsThisMonth || 0
+  const maxRuns = (session?.user as any)?.maxRuns || 3
+  const maxCommits = (session?.user as any)?.maxCommits || 100
   const freeCommitsUsed = (session?.user as any)?.freeCommitsUsed || 0
-  const creditsExhausted = !isPro && (freeCommitsUsed + fileCount > 100)
+  const creditsExhausted = (freeCommitsUsed + fileCount > maxCommits) || (runsThisMonth >= maxRuns)
+
+  // Fetch geo-based pricing
+  useEffect(() => {
+    fetch('/api/pricing').then(r => r.json()).then(setPricing).catch(() => {})
+  }, [])
 
   // Auto-fill author email from GitHub if available
   useEffect(() => {
@@ -42,22 +54,33 @@ function WizardLayout() {
 
   const handleUpgrade = async () => {
     try {
-      const orderRes = await fetch('/api/razorpay/order', { method: 'POST' })
-      const order = await orderRes.json()
-      if (!orderRes.ok) { alert('Could not initiate payment. Please try again.'); return }
+      const orderRes = await fetch('/api/razorpay/order', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const orderData = await orderRes.json()
+      if (!orderRes.ok) { alert(orderData.error || 'Could not initiate payment. Please try again.'); return }
+
+      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      if (!rzpKey) { alert('Payment configuration error. Contact support.'); return }
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
+        key: rzpKey,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        order_id: orderData.orderId,
         name: 'GitTime Pro',
-        description: 'One-Time Lifetime Upgrade',
-        order_id: order.id,
+        description: `Pro Monthly Subscription`,
         handler: async (response: any) => {
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(response),
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              planType: 'monthly',
+            }),
           })
           const verifyData = await verifyRes.json()
           if (verifyData.success) {
@@ -69,20 +92,29 @@ function WizardLayout() {
         },
         prefill: { email: session?.user?.email || '' },
         theme: { color: '#00ff87' },
+        modal: {
+          ondismiss: () => {
+            console.log('Razorpay checkout dismissed by user')
+          }
+        },
       }
 
-      // @ts-ignore - Razorpay is loaded via script tag
       const rzp = new (window as any).Razorpay(options)
+      rzp.on('payment.failed', (response: any) => {
+        console.error('Razorpay payment failed:', response.error)
+        alert(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+      })
       rzp.open()
-    } catch (err) {
-      alert('Something went wrong. Please try again.')
+    } catch (err: any) {
+      console.error('Razorpay checkout error:', err)
+      alert(`Something went wrong: ${err?.message || 'Please try again.'}`)
     }
   }
 
   const canProceed = () => {
     if (step === 1) return authors[0].name.trim() !== '' && authors[0].email.trim() !== ''
     if (step === 2) return sessionId !== null
-    if (step === 3) return startDate && endDate && new Date(startDate) < new Date(endDate)
+    if (step === 3) return startDate && endDate && new Date(startDate) < new Date(endDate) && fileCount <= maxCommits
     if (step === 4) return true // Branch name handles internally or defaulting
     return false
   }
@@ -104,32 +136,52 @@ function WizardLayout() {
         <div className="relative p-8">
           <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">✕</button>
 
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono text-[#00ff87] border border-[#00ff87]/20 bg-[#00ff87]/5 mb-4">✦ One-Time Lifetime Upgrade</div>
-            <h2 className="text-3xl font-black text-white mb-2">Unlock <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">GitTime Pro</span></h2>
-            <p className="text-white/40 text-sm">Pay once. Unlock everything. Forever.</p>
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-black text-white mb-2">
+              {creditsExhausted ? (
+                <>You've hit your <span className="text-red-400">free limit!</span> 🚦</>
+              ) : (
+                <>Unlock <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">GitTime Pro</span></>
+              )}
+            </h2>
+            <p className="text-white/40 text-sm">
+              {creditsExhausted 
+                ? 'Upgrade to Pro to generate 500 commits per repo, 10 runs a month, and unlock the ChatGPT Engine.'
+                : 'More power. More commits. More realism.'}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* Price Display */}
+          <div className="text-center mb-6">
+            <div className="text-5xl font-black text-white">
+              {pricing ? pricing.monthly.display : '$6.99'}
+            </div>
+            <p className="font-mono text-xs text-white/30 mt-1">
+              per month (cancel anytime)
+            </p>
+          </div>
+
+          {/* Feature Comparison */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-2xl border border-white/5 bg-white/2">
-              <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-4">Free</p>
-              <div className="space-y-2.5 text-sm">
-                {['Basic commit messages', '100 total commits', 'Direct GitHub Push'].map(f => (
+              <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-3">Free</p>
+              <div className="space-y-2 text-sm">
+                {['50 commits/gen', '2 runs/month', '10 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/40"><span className="text-white/20">–</span>{f}</div>
                 ))}
-                {['Fake PRs & Branches', 'File Density Control', 'AI Engine (Gemini)'].map(f => (
+                {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/20 line-through"><span>✕</span>{f}</div>
                 ))}
               </div>
             </div>
             <div className="p-4 rounded-2xl border border-[#00ff87]/20 bg-[#00ff87]/5 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold bg-gradient-to-r from-[#00ff87] to-[#00d4ff] text-[#050508]">PRO</div>
-              <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-4">Pro</p>
-              <div className="space-y-2.5 text-sm">
-                {['Realistic AI messages', 'Unlimited commits', 'Unlimited runs'].map(f => (
+              <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-3">Pro</p>
+              <div className="space-y-2 text-sm">
+                {['500 commits/gen', '10 runs/month', '150 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
-                {['Fake PRs & Branches', 'File Density Control', 'AI Engine (your key)'].map(f => (
+                {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
               </div>
@@ -138,9 +190,71 @@ function WizardLayout() {
 
           <button onClick={handleUpgrade} className="group relative overflow-hidden w-full py-4 rounded-2xl font-mono text-lg font-bold text-[#050508] bg-gradient-to-r from-[#00ff87] to-[#00d4ff] hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_40px_rgba(0,255,135,0.25)]">
             <div className="btn-shine-overlay" />
-            <span className="relative z-10">Pay ₹399 — Upgrade to Pro →</span>
+            <span className="relative z-10">
+              {pricing ? `Subscribe ${pricing.monthly.display}/mo →` : 'Subscribe $6.99/mo →'}
+            </span>
           </button>
-          <p className="text-center font-mono text-xs text-white/20 mt-3">UPI · Cards · NetBanking · Wallets · Powered by Razorpay</p>
+          <p className="text-center font-mono text-xs text-white/20 mt-3">Cancel anytime · UPI · Cards · NetBanking · Powered by Razorpay</p>
+        </div>
+      </div>
+    </div>
+  )
+
+  const handleSupportSubmit = async (e: any) => {
+    e.preventDefault()
+    setSupportFormStatus('loading')
+    const formData = new FormData(e.target)
+    formData.append("access_key", "e8faac32-eb2b-4d05-8b2b-e9ba18769dd8")
+
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSupportFormStatus('success')
+        e.target.reset()
+        setTimeout(() => { setShowSupportModal(false); setSupportFormStatus('idle') }, 3000)
+      } else {
+        setSupportFormStatus('error')
+      }
+    } catch {
+      setSupportFormStatus('error')
+    }
+  }
+
+  const renderSupportModal = () => !showSupportModal ? null : (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setShowSupportModal(false)}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f0f17] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#00d4ff]/10 to-transparent rounded-full blur-[60px] pointer-events-none" />
+        <div className="relative p-8">
+          <button onClick={() => setShowSupportModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">✕</button>
+
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Get in touch</h2>
+            <p className="text-white/40 text-[13px]">Need help with GitTime? Send us a message and we'll get back to you shortly.</p>
+          </div>
+
+          <form onSubmit={handleSupportSubmit} className="space-y-4">
+            <input type="hidden" name="subject" value="New Support Request from GitTime" />
+            <input type="hidden" name="from_name" value="GitTime Support Portal" />
+            
+            <div>
+              <label className="block text-[11px] font-mono text-white/30 uppercase tracking-widest mb-1.5">Your Email</label>
+              <input type="email" name="email" required className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00d4ff]/50 transition-colors" placeholder="dev@example.com" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-white/30 uppercase tracking-widest mb-1.5">How can we help?</label>
+              <textarea name="message" required rows={4} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00d4ff]/50 transition-colors resize-none" placeholder="Describe your issue or ask a question..." />
+            </div>
+
+            <button disabled={supportFormStatus === 'loading' || supportFormStatus === 'success'} className="w-full py-3.5 rounded-xl font-mono text-sm font-bold text-[#050508] bg-[#00d4ff] hover:bg-[#00d4ff]/90 transition-colors disabled:opacity-50 tracking-wide">
+              {supportFormStatus === 'loading' ? 'Sending...' : supportFormStatus === 'success' ? 'Message Sent ✓' : 'Send Message'}
+            </button>
+            {supportFormStatus === 'error' && <p className="text-center font-mono text-xs text-red-400 mt-2">Failed to send message. Please try again.</p>}
+          </form>
         </div>
       </div>
     </div>
@@ -154,7 +268,6 @@ function WizardLayout() {
   ], [])
   const [displayedChars, setDisplayedChars] = useState(0)
   const totalChars = useMemo(() => heroLines.reduce((sum, l) => sum + l.text.length, 0), [heroLines])
-  const typewriterStarted = useRef(false)
 
   useEffect(() => {
     if (status !== 'unauthenticated') return
@@ -226,6 +339,7 @@ function WizardLayout() {
   if (status === "unauthenticated") {
     return (
       <div className="relative min-h-screen bg-[#050508] flex flex-col items-center justify-between overflow-x-hidden selection:bg-brand-green/30 selection:text-brand-green">
+        {renderSupportModal()}
         {/* Background mesh */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute inset-0 dot-grid opacity-60" />
@@ -244,26 +358,23 @@ function WizardLayout() {
           <div className="hidden md:flex items-center gap-8 text-[13px] text-white/40">
             <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors duration-300">Features</a>
             <a href="#how-it-works" onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }) }} className="hover:text-white transition-colors duration-300">How it Works</a>
+            <button onClick={() => setShowSupportModal(true)} className="hover:text-white transition-colors duration-300">Support</button>
             <button onClick={() => signIn('github')} className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] text-white text-[13px] font-medium transition-all duration-300">Sign In</button>
           </div>
         </nav>
 
         {/* Hero */}
-        <main className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-28 pb-36 flex flex-col items-center text-center">
+        <motion.main initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-28 pb-36 flex flex-col items-center text-center">
           <div className="section-label mb-8 animate-hero-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] animate-pulse shadow-[0_0_6px_#00ff87]" />
-            <span className="text-[#00ff87]/80">Powered by Gemini 2.5 Flash</span>
+            <span className="text-[#00ff87]/80">Powered by ChatGPT</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-[5.5rem] font-extrabold text-white tracking-[-0.04em] leading-[1.1] mb-8 animate-hero-2 min-h-[3.6em]">
             {renderTypewriter()}
           </h1>
 
-          <p className="text-lg md:text-xl text-white/40 mb-14 max-w-2xl leading-relaxed font-light animate-hero-3">
-            Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
-          </p>
-
-          <div className="animate-hero-4 flex flex-col items-center">
+          <div className="animate-hero-3 flex flex-col items-center mt-10 mb-10">
             <button onClick={() => signIn('github')} className="group relative overflow-hidden inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-mono text-[15px] font-semibold text-[#050508] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] shadow-[0_0_30px_rgba(0,255,135,0.25)] hover:shadow-[0_0_50px_rgba(0,255,135,0.4)] bg-gradient-to-r from-[#00ff87] to-[#00d4ff]">
               <div className="btn-shine-overlay" />
               <svg className="relative z-10 w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -271,12 +382,15 @@ function WizardLayout() {
               </svg>
               <span className="relative z-10">Sign in with GitHub →</span>
             </button>
-            <p className="mt-5 font-mono text-[11px] text-white/20 tracking-[0.15em] uppercase">Free forever · No credit card</p>
+            
+            <p className="mt-8 text-lg md:text-xl text-white/40 max-w-2xl leading-relaxed font-light animate-hero-4">
+              Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
+            </p>
           </div>
-        </main>
+        </motion.main>
 
         {/* ━━━━━━ BENTO BOX FEATURE GRID ━━━━━━ */}
-        <section id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-8">
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="features" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-8">
           {/* Section header */}
           <div className="text-center mb-20 animate-hero-5">
             <div className="section-label mb-6 mx-auto w-fit">
@@ -304,7 +418,7 @@ function WizardLayout() {
                   <div className="w-10 h-10 rounded-xl bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-center justify-center">
                     <svg className="w-5 h-5 text-[#00d4ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>
                   </div>
-                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by Gemini 2.5</span>
+                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-[#00d4ff]/60">Powered by ChatGPT</span>
                 </div>
 
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight leading-snug">Context-Aware<br />AI Commits</h3>
@@ -312,7 +426,7 @@ function WizardLayout() {
 
                 <div className="font-mono text-[13px] p-5 rounded-2xl bg-[#050508] border border-white/[0.04] relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#00d4ff]/20 to-transparent" />
-                  <p className="text-white/30 mb-2">$ gemini generate-commit --file auth.ts</p>
+                  <p className="text-white/30 mb-2">$ gittime generate-commit --file auth.ts</p>
                   <p className="text-[#00d4ff]"><span className="text-[#00ff87]">✓</span> feat(auth): implement JWT token rotation and secure session cookies</p>
                   <p className="text-[#00d4ff] mt-1"><span className="text-[#00ff87]">✓</span> refactor: extract middleware chain into composable handlers</p>
                 </div>
@@ -409,11 +523,11 @@ function WizardLayout() {
             </div>
 
           </div>
-        </section>
+        </motion.section>
 
 
         {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
-        <section id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-20">
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="how-it-works" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40 pt-20">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
           <div className="text-center mb-20">
@@ -449,7 +563,7 @@ function WizardLayout() {
                 <div className="animate-marquee-up space-y-2 whitespace-nowrap opacity-90 pb-2">
                   <p className="text-white/30">&gt; Authenticating GitHub scopes...</p>
                   <p className="text-white/70">✓ Token verified. User: &quot;Senior Dev&quot;</p>
-                  <p className="text-[#00d4ff] mt-3">&gt; Gemini Batch Analyzing 4,120 lines of code...</p>
+                  <p className="text-[#00d4ff] mt-3">&gt; AI Batch Analyzing 4,120 lines of code...</p>
                   <p className="text-white/25">  - src/auth.ts <span className="text-white/15">(AST parsed)</span></p>
                   <p className="text-white/25">  - src/payment.tsx <span className="text-white/15">(AST parsed)</span></p>
                   <p className="text-[#b026ff] mt-3">&gt; Injecting Fake Pull Request #42...</p>
@@ -494,7 +608,7 @@ function WizardLayout() {
 
                 <div className="mt-6 flex items-center justify-between font-mono text-[10px] text-white/30">
                   <span>12 months of contributions</span>
-                  <span className="text-[#00ff87]/60 hover:text-[#00ff87] transition-colors cursor-pointer">Read the Docs →</span>
+                  <span className="text-[#00ff87]/60 font-mono text-[10px]">12 months of contributions</span>
                 </div>
               </div>
 
@@ -515,7 +629,91 @@ function WizardLayout() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
+
+        {/* ━━━━━━ PRICING ━━━━━━ */}
+        <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }} id="pricing" className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-40">
+          <div className="text-center mb-16">
+            <div className="section-label mb-6 mx-auto w-fit">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87]" />
+              Pricing
+            </div>
+            <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-5 leading-tight">
+              Simple, transparent pricing
+            </h2>
+            <p className="text-lg text-white/40 max-w-xl mx-auto leading-relaxed font-light">
+              Free for casual use. A no-brainer upgrade for power users.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Tier */}
+            <div className="premium-card p-8 rounded-[32px] flex flex-col justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-2">Open Source</h3>
+                <p className="text-white/40 text-[15px] mb-8">Perfect for a quick touch-up.</p>
+                <div className="flex items-baseline gap-2 mb-8">
+                  <span className="text-5xl font-black text-white">Free</span>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {[
+                    { text: '2 generated projects/mo', included: true },
+                    { text: '100 total commits/mo pool', included: true },
+                    { text: 'Context-Aware AI Commits', included: false },
+                    { text: 'Fake PRs & Merges', included: false },
+                    { text: 'Commit Density Control', included: false },
+                    { text: 'Automated GitHub Push', included: false },
+                  ].map((feat, i) => (
+                    <div key={i} className={`flex items-center gap-3 ${feat.included ? 'text-white/70' : 'text-white/20 line-through'}`}>
+                      <span className={feat.included ? 'text-white/40' : 'text-white/20'}>{feat.included ? '✓' : '✕'}</span>
+                      <span className="text-[15px]">{feat.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => signIn('github')} className="w-full py-4 rounded-xl font-mono text-sm font-bold text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors">
+                Sign in to start
+              </button>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="relative premium-card p-8 rounded-[32px] flex flex-col justify-between overflow-hidden group/card">
+              <div className="absolute inset-0 border-2 border-[#00ff87]/30 rounded-[32px] pointer-events-none" />
+              <div className="absolute -top-32 -right-32 w-[300px] h-[300px] bg-gradient-to-br from-[#00ff87]/20 to-transparent rounded-full blur-[80px] pointer-events-none group-hover/card:scale-110 transition-transform duration-700" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-bold text-[#00ff87]">Contributor</h3>
+                  <span className="font-mono text-[10px] uppercase tracking-wider bg-[#00ff87]/10 text-[#00ff87] px-3 py-1 rounded-full border border-[#00ff87]/30">Most Popular</span>
+                </div>
+                <p className="text-white/40 text-[15px] mb-8">Unrestricted access to the simulation engine.</p>
+                <div className="flex items-baseline gap-2 mb-8">
+                  <span className="text-5xl font-black text-white">{pricing ? pricing.monthly.display : '$6.99'}</span>
+                  <span className="text-white/30 font-mono text-sm">/ mo</span>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {[
+                    { text: '10 generated projects/mo', included: true },
+                    { text: '1000 total commits/mo pool', included: true },
+                    { text: 'Context-Aware AI Commits', included: true },
+                    { text: 'Fake PRs & Merges', included: true },
+                    { text: 'Commit Density Control', included: true },
+                    { text: 'Automated GitHub Push', included: true },
+                  ].map((feat, i) => (
+                    <div key={i} className="flex items-center gap-3 text-white/90">
+                      <span className="text-[#00ff87]">✓</span>
+                      <span className="text-[15px]">{feat.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => signIn('github')} className="relative z-10 group/btn overflow-hidden w-full py-4 rounded-xl font-mono text-sm font-bold text-[#050508] bg-gradient-to-r from-[#00ff87] to-[#00d4ff] hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_30px_rgba(0,255,135,0.2)]">
+                <div className="btn-shine-overlay" />
+                <span className="relative z-10">Sign in to upgrade →</span>
+              </button>
+            </div>
+          </div>
+        </motion.section>
 
         {/* ━━━━━━ SOCIAL PROOF STATS ━━━━━━ */}
         <section className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-32">
@@ -542,9 +740,12 @@ function WizardLayout() {
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="GitTime" className="w-6 h-6 rounded-lg object-contain" />
-              <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
+              <div className="flex items-center gap-6">
+                <button onClick={() => setShowSupportModal(true)} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Support</button>
+                <span className="font-mono text-xs text-white/20">GitTime Pro © {new Date().getFullYear()}</span>
+              </div>
             </div>
-            <p className="font-mono text-[11px] text-white/15">Built with Next.js & Gemini AI</p>
+            {/* <p className="font-mono text-[11px] text-white/15">Built with Next.js & ChatGPT</p> */}
           </div>
         </footer>
       </div>
@@ -555,6 +756,7 @@ function WizardLayout() {
     <div className="relative min-h-screen flex flex-col">
       <script src="https://checkout.razorpay.com/v1/checkout.js" async />
       {renderUpgradeModal()}
+      {renderSupportModal()}
 
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[30%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(0,255,135,0.05) 0%, transparent 70%)' }} />
@@ -573,10 +775,11 @@ function WizardLayout() {
               <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-slow shadow-[0_0_8px_#00ff87]" />
               {!isPro && (
                 <button onClick={() => setShowUpgradeModal(true)} className="font-mono text-xs font-bold px-3 py-1.5 rounded-lg border border-[#00ff87]/30 text-[#00ff87] bg-[#00ff87]/10 hover:bg-[#00ff87]/20 transition-all animate-pulse-slow">
-                  ⚡ Upgrade to Pro
+                  ⚡ Free ({runsThisMonth}/{maxRuns} runs)
                 </button>
               )}
-              {isPro && <span className="font-mono text-xs text-[#00ff87] border border-[#00ff87]/30 bg-[#00ff87]/10 px-3 py-1.5 rounded-lg">✓ Pro</span>}
+              {isPro && <span className="font-mono text-xs text-[#00ff87] border border-[#00ff87]/30 bg-[#00ff87]/10 px-3 py-1.5 rounded-lg">✓ Pro ({runsThisMonth}/{maxRuns} runs)</span>}
+              <button onClick={() => setShowSupportModal(true)} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Help</button>
               <button onClick={() => signOut()} className="font-mono text-xs text-white/40 hover:text-white transition-colors">Sign Out</button>
             </div>
           </div>

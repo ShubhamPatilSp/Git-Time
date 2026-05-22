@@ -40,3 +40,5 @@ next-env.d.ts
 # Temporary DB scripts
 reset-credits.mjs
 list-users.mjs
+upgrade.js
+scripts/upgrade_user.js

@@ -13,6 +13,8 @@ export interface IJob extends Document {
   commits?: any[];
   downloadUrl?: string;
   error?: string;
+  coAuthorToken?: string;
+  coAuthorRepoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +32,7 @@ const JobSchema: Schema = new Schema({
   commits: { type: Schema.Types.Mixed, default: [] },
   downloadUrl: { type: String },
   error: { type: String },
+  coAuthorRepoUrl: { type: String },
 }, { 
   timestamps: true 
 })

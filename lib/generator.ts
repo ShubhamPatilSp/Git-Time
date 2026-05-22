@@ -119,6 +119,17 @@ function seededRng(seed: number): () => number {
   }
 }
 
+function buildCoAuthorTrailer(allAuthors: Author[], primaryAuthor: Author): string {
+  const coAuthors = allAuthors.filter(a => a.email !== primaryAuthor.email)
+  if (coAuthors.length === 0) return ''
+  const lines = coAuthors.map(ca => {
+    const name = ca.name.replace(/"/g, "'")
+    const email = ca.email.replace(/"/g, "'")
+    return `Co-authored-by: ${name} <${email}>`
+  })
+  return '\n\n' + lines.join('\n')
+}
+
 async function initGitRepo(repoPath: string, author: Author, branchName: string): Promise<void> {
   await gitExec('git init', {}, repoPath)
   await gitExec(`git config user.name "${author.name}"`, {}, repoPath)
@@ -143,7 +154,8 @@ async function spawnFeatureBranch(
   messages: string[],
   baseDate: Date,
   author: Author,
-  rng: () => number
+  rng: () => number,
+  allAuthors: Author[] = []
 ): Promise<void> {
   const nameIdx = Math.floor(rng() * FEATURE_NAMES.length)
   const branchName = `feature/${FEATURE_NAMES[nameIdx]}-${prNumber}`
@@ -165,18 +177,24 @@ async function spawnFeatureBranch(
         await gitExec(`git add -- "${relPath}"`, {}, repoPath)
         const staged = await gitExec('git diff --cached --name-only', {}, repoPath)
         if (!staged?.trim()) continue
-        await gitExec(
-          `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -m "${safeMsg}"`,
-          {
-            GIT_AUTHOR_DATE: d.toISOString(),
-            GIT_COMMITTER_DATE: d.toISOString(),
-            GIT_AUTHOR_NAME: author.name,
-            GIT_AUTHOR_EMAIL: author.email,
-            GIT_COMMITTER_NAME: author.name,
-            GIT_COMMITTER_EMAIL: author.email,
-          },
-          repoPath
-        )
+        const trailer = buildCoAuthorTrailer(allAuthors, author)
+        const fullBranchMsg = safeMsg + trailer
+        const branchMsgFile = join(repoPath, '.git', 'COMMIT_EDITMSG_TMP')
+        await fsExtra.writeFile(branchMsgFile, fullBranchMsg)
+        try {
+          await gitExec(
+            `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -F .git/COMMIT_EDITMSG_TMP`,
+            {
+              GIT_AUTHOR_DATE: d.toISOString(),
+              GIT_COMMITTER_DATE: d.toISOString(),
+              GIT_AUTHOR_NAME: author.name,
+              GIT_AUTHOR_EMAIL: author.email,
+              GIT_COMMITTER_NAME: author.name,
+              GIT_COMMITTER_EMAIL: author.email,
+            },
+            repoPath
+          )
+        } finally { try { await fsExtra.remove(branchMsgFile) } catch {} }
       } catch { /* individual commit errors are non-fatal */ }
     }
 
@@ -212,7 +230,8 @@ async function stageAndCommit(
   message: string,
   authorDate: Date,
   committerDate: Date,
-  author: Author
+  author: Author,
+  allAuthors: Author[] = []
 ): Promise<boolean> {
   const relPath = relative(repoPath, filePath).replace(/\\/g, '/')
   const safeMsg = message
@@ -230,18 +249,28 @@ async function stageAndCommit(
   const nameEsc = author.name.replace(/"/g, "'")
   const emailEsc = author.email.replace(/"/g, "'")
 
-  await gitExec(
-    `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -m "${safeMsg}"`,
-    {
-      GIT_AUTHOR_DATE: authorDate.toISOString(),
-      GIT_COMMITTER_DATE: committerDate.toISOString(),
-      GIT_AUTHOR_NAME: author.name,
-      GIT_AUTHOR_EMAIL: author.email,
-      GIT_COMMITTER_NAME: author.name,
-      GIT_COMMITTER_EMAIL: author.email,
-    },
-    repoPath
-  )
+  // Build full commit message with Co-authored-by trailers for green dots
+  const trailer = buildCoAuthorTrailer(allAuthors, author)
+  const fullMessage = safeMsg + trailer
+  const msgFile = join(repoPath, '.git', 'COMMIT_EDITMSG_TMP')
+  await fsExtra.writeFile(msgFile, fullMessage)
+
+  try {
+    await gitExec(
+      `git -c user.name="${nameEsc}" -c user.email="${emailEsc}" commit -F .git/COMMIT_EDITMSG_TMP`,
+      {
+        GIT_AUTHOR_DATE: authorDate.toISOString(),
+        GIT_COMMITTER_DATE: committerDate.toISOString(),
+        GIT_AUTHOR_NAME: author.name,
+        GIT_AUTHOR_EMAIL: author.email,
+        GIT_COMMITTER_NAME: author.name,
+        GIT_COMMITTER_EMAIL: author.email,
+      },
+      repoPath
+    )
+  } finally {
+    try { await fsExtra.remove(msgFile) } catch {}
+  }
   return true
 }
 
@@ -276,29 +305,58 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
   const allFiles = sortedRel.map(rel => join(extractPath, rel))
   const totalFiles = allFiles.length
 
-  // Build weighted file pool based on fileTypeDensity
-  let weightedPool: string[] = allFiles
+  // Build mathematical file pickers to adhere strictly to fileTypeDensity requested by user while preserving realistic organic feature-progression
+  const extensionBuckets: Record<string, string[]> = {}
+  allFiles.forEach(f => {
+    const ext = f.split('.').pop()?.toLowerCase() || 'other'
+    if (!extensionBuckets[ext]) extensionBuckets[ext] = []
+    extensionBuckets[ext].push(f) // natural sorting is preserved inside the buckets
+  })
+  
+  const actualDensity: { ext: string, weight: number }[] = []
+  let totalActualWeight = 0
   if (fileTypeDensity && Object.keys(fileTypeDensity).length > 0) {
-    const totalWeight = Object.values(fileTypeDensity).reduce((a, b) => a + b, 0)
-    if (totalWeight > 0) {
-      const boostedPool: string[] = []
-      const otherFiles = allFiles.filter(f => {
-        const ext = f.split('.').pop()?.toLowerCase() || ''
-        return !Object.keys(fileTypeDensity).includes(ext)
-      })
-      for (const [ext, weight] of Object.entries(fileTypeDensity)) {
-        const matchingFiles = allFiles.filter(f => f.endsWith(`.${ext}`))
-        if (matchingFiles.length > 0) {
-          const multiplier = Math.max(1, Math.round((weight / totalWeight) * 10))
-          for (let i = 0; i < multiplier; i++) {
-            boostedPool.push(...matchingFiles)
-          }
-        }
+    for (const [ext, weight] of Object.entries(fileTypeDensity)) {
+      if (extensionBuckets[ext] && extensionBuckets[ext].length > 0) {
+        actualDensity.push({ ext, weight })
+        totalActualWeight += weight
       }
-      // Always include remaining files once
-      boostedPool.push(...otherFiles)
-      weightedPool = boostedPool.length > 0 ? boostedPool : allFiles
     }
+  }
+
+  const otherFiles = allFiles.filter(f => !fileTypeDensity || !Object.keys(fileTypeDensity).includes(f.split('.').pop()?.toLowerCase() || ''))
+  const hasOther = otherFiles.length > 0
+  const residualWeight = Math.max(0, 100 - totalActualWeight)
+  const rollTotal = totalActualWeight + (hasOther ? residualWeight : 0)
+
+  // We maintain independent counters for each bucket so we organically progress through ALL files of that type realistically
+  const bucketCounters: Record<string, number> = {}
+
+  function pickFile(seqIndex: number): string {
+    if (totalActualWeight === 0) {
+      return allFiles[seqIndex % totalFiles]
+    }
+    
+    let roll = rng() * rollTotal
+    for (const { ext, weight } of actualDensity) {
+      if (roll <= weight) {
+        const bucket = extensionBuckets[ext]
+        if (!bucketCounters[ext]) bucketCounters[ext] = 0
+        const f = bucket[bucketCounters[ext] % bucket.length]
+        bucketCounters[ext]++
+        return f
+      }
+      roll -= weight
+    }
+    
+    if (hasOther) {
+      if (!bucketCounters['__other']) bucketCounters['__other'] = 0
+      const f = otherFiles[bucketCounters['__other'] % otherFiles.length]
+      bucketCounters['__other']++
+      return f
+    }
+    
+    return allFiles[seqIndex % totalFiles]
   }
 
   // How many commits to create — can be more or fewer than file count
@@ -342,13 +400,11 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     const commitsToday = Math.min(daySlot.commitCount, desiredCommits - commitsDone)
     if (commitsToday === 0) continue
 
-    // Pre-calculate files for today for AI batching
-    const filesToCommitToday = []
+    // Pre-calculate files for today for AI batching AND commit loop
+    const filesToCommitToday: {absolutePath: string, filePath: string}[] = []
     let tempCommitsDone = commitsDone
-    const poolSize = weightedPool.length
     for (let c = 0; c < commitsToday && tempCommitsDone < desiredCommits; c++) {
-      const currentFileIdx = tempCommitsDone % poolSize
-      const filePath = weightedPool[currentFileIdx]
+      const filePath = pickFile(tempCommitsDone)
       const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
       filesToCommitToday.push({ absolutePath: filePath, filePath: relPath })
       tempCommitsDone++
@@ -365,10 +421,8 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     }
 
     for (let c = 0; c < commitsToday && commitsDone < desiredCommits; c++) {
-      // Cycle through weighted pool
-      const currentFileIdx = commitsDone % poolSize
-      const filePath = weightedPool[currentFileIdx]
-      const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
+      const filePath = filesToCommitToday[c].absolutePath
+      const relPath = filesToCommitToday[c].filePath
 
       // Pick author FIRST, then generate timestamp using THEIR timezone
       const author = pickAuthor(authors, rng)
@@ -377,6 +431,18 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
       const ts = singleTs[0]
 
       let message = aiMessageMap[relPath]
+      if (!message) {
+        // Fallback: search for partial matches (LLMs often append ./ or simplify paths)
+        const matchKey = Object.keys(aiMessageMap).find(k => 
+          k === relPath || k.endsWith(relPath) || relPath.endsWith(k) || k.includes(relPath.split('/').pop() || '')
+        )
+        if (matchKey) {
+          message = aiMessageMap[matchKey]
+          // Remove it so it doesn't get incorrectly reused for another file with same name
+          delete aiMessageMap[matchKey]
+        }
+      }
+
       if (!message) {
         message = generateMessage({
           filePath: relPath,
@@ -396,7 +462,8 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
         message,
         ts.authorDate,
         ts.committerDate,
-        author
+        author,
+        authors
       )
 
       if (committed) {
@@ -421,13 +488,13 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
         const branchFiles: string[] = []
         const branchMessages: string[] = []
         for (let bi = 0; bi < branchCommitCount; bi++) {
-          const bIdx = (commitsDone + bi) % poolSize
-          branchFiles.push(weightedPool[bIdx])
-          const bRelPath = relative(extractPath, weightedPool[bIdx]).replace(/\\/g, '/')
+          const pickedFile = pickFile(commitsDone + bi)
+          branchFiles.push(pickedFile)
+          const bRelPath = relative(extractPath, pickedFile).replace(/\\/g, '/')
           branchMessages.push(generateMessage({ filePath: bRelPath, index: commitsDone + bi, total: desiredCommits, previousMessages, authorStyle }))
         }
         prNumber++
-        await spawnFeatureBranch(extractPath, safeBranch, prNumber, branchFiles, branchMessages, ts.authorDate, author, rng)
+        await spawnFeatureBranch(extractPath, safeBranch, prNumber, branchFiles, branchMessages, ts.authorDate, author, rng, authors)
         sinceLastPR = 0
       }
 
@@ -471,8 +538,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
     let hourOffset = 0
 
     while (commitsDone < desiredCommits) {
-      const currentFileIdx = commitsDone % totalFiles
-      const filePath = allFiles[currentFileIdx]
+      const filePath = pickFile(commitsDone)
       const relPath = relative(extractPath, filePath).replace(/\\/g, '/')
       const author = pickAuthor(authors, rng)
 
@@ -489,7 +555,7 @@ export async function generateCommits(options: GenerateOptions): Promise<Generat
         authorStyle,
       })
 
-      const committed = await stageAndCommit(extractPath, filePath, message, d, cd, author)
+      const committed = await stageAndCommit(extractPath, filePath, message, d, cd, author, authors)
 
       if (committed) {
         commitEntries.push({

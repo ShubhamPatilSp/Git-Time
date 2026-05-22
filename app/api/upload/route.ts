@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import connectToDatabase from '@/lib/db'
+import User from '@/models/User'
+import { createWriteStream } from 'fs'
+import { pipeline } from 'stream/promises'
+import { Readable } from 'stream'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { v4 as uuidv4 } from 'uuid'
@@ -37,7 +43,26 @@ export async function POST(request: NextRequest) {
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     if (!file.name.endsWith('.zip')) return NextResponse.json({ error: 'Only .zip files accepted' }, { status: 400 })
-    if (file.size > 150 * 1024 * 1024) return NextResponse.json({ error: 'Max 150MB' }, { status: 400 })
+
+    // Plan-aware ZIP size limit
+    const session = await getServerSession(authOptions)
+    let maxSizeMB = 10 // Free tier default
+    if (session?.user?.email) {
+      try {
+        await connectToDatabase()
+        const dbUser = await User.findOne({ email: session.user.email })
+        if (dbUser) {
+          const isPro = dbUser.plan === 'pro' && dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
+          maxSizeMB = isPro ? 150 : 10
+        }
+      } catch { /* if DB fails, use free tier limit */ }
+    }
+
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      return NextResponse.json({ 
+        error: `Max ${maxSizeMB}MB for your plan.${maxSizeMB === 10 ? ' Upgrade to Pro for 150MB uploads!' : ''}` 
+      }, { status: 400 })
+    }
 
     const sessionId = uuidv4()
     const sessionDir = join(TMP_DIR, sessionId)
@@ -47,8 +72,11 @@ export async function POST(request: NextRequest) {
     await fsExtra.ensureDir(sessionDir)
     await fsExtra.ensureDir(extractPath)
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(zipPath, buffer)
+    // Stream file directly to disk to prevent RAM exhaustion on Render
+    await pipeline(
+      Readable.fromWeb(file.stream() as any),
+      createWriteStream(zipPath)
+    )
 
     const zip = new AdmZip(zipPath)
     zip.extractAllTo(extractPath, true)

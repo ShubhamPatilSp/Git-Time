@@ -17,7 +17,21 @@ export function StepStyle({ setShowUpgradeModal }: { setShowUpgradeModal: (v: bo
     useAI, setUseAI, 
     fileTypeDensity, setFileTypeDensity 
   } = useWizard()
-  const [densityPreset, setDensityPreset] = useState<string>('default')
+  // Derive initial preset from persisted fileTypeDensity to stay in sync after navigation
+  const [densityPreset, setDensityPreset] = useState<string>(() => {
+    const presets = [
+      { id: 'fullstack', map: { ts: 50, tsx: 30, css: 10, json: 10 } },
+      { id: 'backend', map: { ts: 60, js: 20, json: 15, md: 5 } },
+      { id: 'frontend', map: { tsx: 50, css: 30, ts: 20 } },
+    ]
+    const keys = Object.keys(fileTypeDensity)
+    if (keys.length === 0) return 'default'
+    for (const p of presets) {
+      const pKeys = Object.keys(p.map)
+      if (pKeys.length === keys.length && pKeys.every(k => (p.map as any)[k] === fileTypeDensity[k])) return p.id
+    }
+    return 'custom'
+  })
 
   const calculateRealismScore = () => {
     let score = 20
@@ -146,7 +160,7 @@ export function StepStyle({ setShowUpgradeModal }: { setShowUpgradeModal: (v: bo
                       <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/40 text-[8px] font-bold uppercase tracking-widest border border-white/10 flex-shrink-0">🔒 PRO</span>
                     )}
                   </div>
-                  <p className="font-mono text-[10px] text-white/40 italic truncate">Highly realistic Gemini-generated messages</p>
+                  <p className="font-mono text-[10px] text-white/40 italic truncate">Highly realistic ChatGPT-generated messages</p>
                 </div>
                 <div className={`relative rounded-full transition-colors flex-shrink-0 mt-1 ${useAI && isPro ? 'shadow-[0_0_12px_rgba(0,212,255,0.4)]' : ''}`}
                   style={{ width: '40px', height: '22px', background: useAI && isPro ? 'linear-gradient(90deg, #00ff87, #00d4ff)' : 'rgba(255,255,255,0.1)' }}>

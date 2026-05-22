@@ -11,7 +11,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
     progress, setProgress, progressMsg, setProgressMsg, setErrorMsg,
     sessionId, startDate, endDate, authors, pattern, totalCommits, branchName,
     weekdaysOnly, timezone, toggledOffDates, authorStyle, addMergeCommits,
-    injectPRMerges, excludeFolders, useAI, fileTypeDensity, fileCount, setStep, githubToken
+    injectPRMerges, excludeFolders, useAI, fileTypeDensity, fileCount, setStep
   } = useWizard()
   
   const [pushingToGithub, setPushingToGithub] = useState(false)
@@ -51,6 +51,7 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
           excludeFolders: excludeFolders.split(',').map(s => s.trim()).filter(Boolean),
           useAI,
           fileTypeDensity: Object.keys(fileTypeDensity).length > 0 ? fileTypeDensity : undefined,
+          coAuthorToken: authors.find(a => a.coAuthorToken)?.coAuthorToken || undefined,
         }),
       })
 
@@ -99,7 +100,10 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
         await updateSession()
 
         // Show upgrade modal if credits are now exhausted
-        if (typeof data.freeCommitsUsed === 'number' && data.freeCommitsUsed >= 100) {
+        if (
+          (typeof data.runsThisMonth === 'number' && typeof data.maxRuns === 'number' && data.runsThisMonth >= data.maxRuns) ||
+          (typeof data.freeCommitsUsed === 'number' && typeof data.maxCommits === 'number' && data.freeCommitsUsed >= data.maxCommits)
+        ) {
           setShowUpgradeModal(true)
         }
 
@@ -126,11 +130,10 @@ export function StepGenerate({ setShowUpgradeModal }: { setShowUpgradeModal: (v:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          token: githubToken,
           repoName,
           isPrivate: isPrivateRepo,
           branchName: branchName || 'main',
-          description: 'Generated with GitTime',
+          description: '',
         }),
       })
       const data = await res.json()

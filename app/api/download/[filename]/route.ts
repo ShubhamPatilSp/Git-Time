@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import fsExtra from 'fs-extra'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +14,12 @@ export async function GET(
   { params }: { params: { filename: string } }
 ) {
   try {
+    // Require authentication to download
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Auth required to download' }, { status: 401 })
+    }
+
     const { filename } = params
 
     // Sanitize filename - only allow alphanumeric, hyphens, underscores, dots
@@ -35,10 +43,19 @@ export async function GET(
 
     const stat = await fsExtra.stat(filePath)
     
-    // Create a Web-standard ReadableStream from the file
-    const fileBuffer = await fsExtra.readFile(filePath)
+    // Stream the file instead of loading entire thing into memory
+    const { createReadStream } = await import('fs')
+    const nodeStream = createReadStream(filePath)
+    const webStream = new ReadableStream({
+      start(controller) {
+        nodeStream.on('data', (chunk: any) => controller.enqueue(new Uint8Array(Buffer.from(chunk))))
+        nodeStream.on('end', () => controller.close())
+        nodeStream.on('error', (err) => controller.error(err))
+      },
+      cancel() { nodeStream.destroy() }
+    })
     
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(webStream, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
