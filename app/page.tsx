@@ -166,7 +166,7 @@ function WizardLayout() {
             <div className="p-4 rounded-2xl border border-white/5 bg-white/2">
               <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-3">Free</p>
               <div className="space-y-2 text-sm">
-                {['50 commits/gen', '2 runs/month', '10 MB uploads'].map(f => (
+                {['50 commits/gen', '2 runs/month', '50 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/40"><span className="text-white/20">–</span>{f}</div>
                 ))}
                 {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (
@@ -178,7 +178,7 @@ function WizardLayout() {
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold bg-gradient-to-r from-[#00ff87] to-[#00d4ff] text-[#050508]">PRO</div>
               <p className="font-mono text-xs text-[#00ff87] uppercase tracking-widest mb-3">Pro</p>
               <div className="space-y-2 text-sm">
-                {['500 commits/gen', '10 runs/month', '150 MB uploads'].map(f => (
+                {['500 commits/gen', '10 runs/month', '250 MB uploads'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-white/70"><span className="text-[#00ff87]">✓</span>{f}</div>
                 ))}
                 {['AI Messages', 'Fake PRs', 'Density Control'].map(f => (

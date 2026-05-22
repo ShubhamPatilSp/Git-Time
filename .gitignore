@@ -42,3 +42,8 @@ reset-credits.mjs
 list-users.mjs
 upgrade.js
 scripts/upgrade_user.js
+make-premium.mjs
+make-premium-any.mjs
+check-user.mjs
+scratch_test.mjs
+

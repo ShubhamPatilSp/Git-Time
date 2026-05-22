@@ -46,21 +46,21 @@ export async function POST(request: NextRequest) {
 
     // Plan-aware ZIP size limit
     const session = await getServerSession(authOptions)
-    let maxSizeMB = 10 // Free tier default
+    let maxSizeMB = 50 // Free tier default
     if (session?.user?.email) {
       try {
         await connectToDatabase()
         const dbUser = await User.findOne({ email: session.user.email })
         if (dbUser) {
           const isPro = dbUser.plan === 'pro' && dbUser.subscriptionExpiry && new Date() < new Date(dbUser.subscriptionExpiry)
-          maxSizeMB = isPro ? 150 : 10
+          maxSizeMB = isPro ? 250 : 50
         }
       } catch { /* if DB fails, use free tier limit */ }
     }
 
     if (file.size > maxSizeMB * 1024 * 1024) {
       return NextResponse.json({ 
-        error: `Max ${maxSizeMB}MB for your plan.${maxSizeMB === 10 ? ' Upgrade to Pro for 150MB uploads!' : ''}` 
+        error: `Max ${maxSizeMB}MB for your plan.${maxSizeMB === 50 ? ' Upgrade to Pro for 250MB uploads!' : ''}` 
       }, { status: 400 })
     }
 

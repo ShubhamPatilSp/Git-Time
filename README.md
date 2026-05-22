@@ -35,7 +35,7 @@ npm run dev
 Set your name + email (must match GitHub account email). Optionally add co-authors with weight sliders. Add a GitHub PAT for direct push.
 
 ### Step 2 — Upload
-Drag & drop your project ZIP (max 150MB). The engine auto-excludes binaries, lock files, and build artifacts.
+Drag & drop your project ZIP (max 250MB for Pro / 50MB for Free). The engine auto-excludes binaries, lock files, and build artifacts.
 
 ### Step 3 — Timeline
 Pick start/end dates and an activity pattern. The heatmap preview updates live.

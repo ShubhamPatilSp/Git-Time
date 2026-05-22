@@ -7,14 +7,14 @@ import { useWizard } from './WizardContext'
 export function StepUpload() {
   const { data: session } = useSession()
   const isPro = !!(session?.user as any)?.isPro
-  const maxSizeMB = isPro ? 150 : 10
+  const maxSizeMB = isPro ? 250 : 50
   const { file, setFile, sessionId, setSessionId, stage, uploadFile, setErrorMsg, fileCount } = useWizard()
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validateAndSetFile = (f: File) => {
     if (!f.name.endsWith('.zip')) { setErrorMsg('Only .zip files accepted'); return }
-    if (f.size > maxSizeMB * 1024 * 1024) { setErrorMsg(`Max ${maxSizeMB}MB for your plan.${!isPro ? ' Upgrade to Pro for 150MB!' : ''}`); return }
+    if (f.size > maxSizeMB * 1024 * 1024) { setErrorMsg(`Max ${maxSizeMB}MB for your plan.${!isPro ? ' Upgrade to Pro for 250MB!' : ''}`); return }
     setFile(f); setErrorMsg(''); setSessionId(null)
   }
 
@@ -23,7 +23,7 @@ export function StepUpload() {
     const f = e.dataTransfer.files[0]; 
     if (f) {
       if (!f.name.endsWith('.zip')) { setErrorMsg('Only .zip files accepted'); return }
-      if (f.size > maxSizeMB * 1024 * 1024) { setErrorMsg(`Max ${maxSizeMB}MB for your plan.${!isPro ? ' Upgrade to Pro for 150MB!' : ''}`); return }
+      if (f.size > maxSizeMB * 1024 * 1024) { setErrorMsg(`Max ${maxSizeMB}MB for your plan.${!isPro ? ' Upgrade to Pro for 250MB!' : ''}`); return }
       setFile(f); setErrorMsg(''); setSessionId(null)
     }
   }, [setErrorMsg, setFile, setSessionId, maxSizeMB, isPro])

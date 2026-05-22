@@ -53,7 +53,7 @@ export const PLAN_LIMITS = {
   free: {
     maxCommitsPerGen: 50,
     maxRunsPerMonth: 2,
-    maxZipSizeMB: 10,
+    maxZipSizeMB: 50,
     canUseAI: false,
     canUsePRMerges: false,
     canUseDensity: false,
@@ -61,7 +61,7 @@ export const PLAN_LIMITS = {
   pro: {
     maxCommitsPerGen: 500,
     maxRunsPerMonth: 10,
-    maxZipSizeMB: 150,
+    maxZipSizeMB: 250,
     canUseAI: true,
     canUsePRMerges: true,
     canUseDensity: true,
