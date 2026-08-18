@@ -1,7 +1,22 @@
 {
   "name": "gittime",
-  "version": "0.1.0",
-  "private": true,
+  "version": "2.0.0",
+  "description": "Realistic, undetectable Git commit history and timeline generator",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShubhamPatilSp/Git-Time.git"
+  },
+  "keywords": [
+    "git",
+    "github",
+    "commit-history",
+    "timeline",
+    "generator",
+    "backdate-commits",
+    "developer-tools",
+    "nextjs"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

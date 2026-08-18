@@ -36,7 +36,7 @@ function WizardLayout() {
 
   // Fetch geo-based pricing
   useEffect(() => {
-    fetch('/api/pricing').then(r => r.json()).then(setPricing).catch(() => {})
+    fetch('/api/pricing').then(r => r.json()).then(setPricing).catch(() => { })
   }, [])
 
   // Auto-fill author email from GitHub if available
@@ -54,7 +54,7 @@ function WizardLayout() {
 
   const handleUpgrade = async () => {
     try {
-      const orderRes = await fetch('/api/razorpay/order', { 
+      const orderRes = await fetch('/api/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -145,7 +145,7 @@ function WizardLayout() {
               )}
             </h2>
             <p className="text-white/40 text-sm">
-              {creditsExhausted 
+              {creditsExhausted
                 ? 'Upgrade to Pro to generate 500 commits per repo, 10 runs a month, and unlock the ChatGPT Engine.'
                 : 'More power. More commits. More realism.'}
             </p>
@@ -204,7 +204,8 @@ function WizardLayout() {
     e.preventDefault()
     setSupportFormStatus('loading')
     const formData = new FormData(e.target)
-    formData.append("access_key", "e8faac32-eb2b-4d05-8b2b-e9ba18769dd8")
+    const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || ""
+    formData.append("access_key", accessKey)
 
     try {
       const res = await fetch("https://api.web3forms.com/submit", {
@@ -240,7 +241,7 @@ function WizardLayout() {
           <form onSubmit={handleSupportSubmit} className="space-y-4">
             <input type="hidden" name="subject" value="New Support Request from GitTime" />
             <input type="hidden" name="from_name" value="GitTime Support Portal" />
-            
+
             <div>
               <label className="block text-[11px] font-mono text-white/30 uppercase tracking-widest mb-1.5">Your Email</label>
               <input type="email" name="email" required className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#00d4ff]/50 transition-colors" placeholder="dev@example.com" />
@@ -382,7 +383,7 @@ function WizardLayout() {
               </svg>
               <span className="relative z-10">Sign in with GitHub →</span>
             </button>
-            
+
             <p className="mt-8 text-lg md:text-xl text-white/40 max-w-2xl leading-relaxed font-light animate-hero-4">
               Instantly turn empty portfolios into bustling, battle-tested repositories. Backdate highly-realistic, AI-generated commit workflows directly to your GitHub.
             </p>
@@ -680,7 +681,7 @@ function WizardLayout() {
             <div className="relative premium-card p-8 rounded-[32px] flex flex-col justify-between overflow-hidden group/card">
               <div className="absolute inset-0 border-2 border-[#00ff87]/30 rounded-[32px] pointer-events-none" />
               <div className="absolute -top-32 -right-32 w-[300px] h-[300px] bg-gradient-to-br from-[#00ff87]/20 to-transparent rounded-full blur-[80px] pointer-events-none group-hover/card:scale-110 transition-transform duration-700" />
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-2xl font-bold text-[#00ff87]">Contributor</h3>
